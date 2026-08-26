@@ -19,7 +19,10 @@ npx prisma migrate dev    # cria o schema no MySQL
 npm run dev
 ```
 
-A aplicação sobe em `http://localhost:3000` e redireciona para `/dashboard`.
+A aplicação sobe em `http://localhost:3001` e redireciona para `/dashboard`.
+
+> A porta 3001 é fixada nos scripts `dev` e `start` para não colidir com outros
+> projetos Next rodando na 3000. Para usar outra: `npm run dev -- -p 3002`.
 
 > O MVP usa dados mockados (`src/mocks/`), então o Dashboard e a tela de Clientes
 > funcionam mesmo sem banco configurado. O MySQL só é necessário a partir da etapa
