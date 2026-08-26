@@ -1,0 +1,612 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy — uma organização por enquanto, modelada para virar multi-loja/SaaS.
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(cuid())
+  nome      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stores       Store[]
+  users        User[]
+  customers    Customer[]
+  categories   Category[]
+  products     Product[]
+  sales        Sale[]
+  tags         Tag[]
+  tasks        Task[]
+  campaigns    Campaign[]
+  consents     Consent[]
+  activityLogs ActivityLog[]
+
+  @@map("organizations")
+}
+
+model Store {
+  id             String @id @default(cuid())
+  organizationId String
+  nome           String
+  slug           String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sellers      Seller[]
+  customers    Customer[]
+  products     Product[]
+  sales        Sale[]
+  tasks        Task[]
+  campaigns    Campaign[]
+
+  @@unique([organizationId, slug])
+  @@map("stores")
+}
+
+// ---------------------------------------------------------------------------
+// Acesso
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  GERENTE
+  VENDEDOR
+}
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  nome           String
+  email          String   @unique
+  senhaHash      String
+  role           UserRole @default(VENDEDOR)
+  ativo          Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  seller       Seller?
+  tasks        Task[]       @relation("TaskCriador")
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model Seller {
+  id      String  @id @default(cuid())
+  storeId String
+  userId  String? @unique
+  nome    String
+  ativo   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customers Customer[]
+  sales     Sale[]
+  tasks     Task[]     @relation("TaskResponsavel")
+
+  @@index([storeId])
+  @@map("sellers")
+}
+
+// ---------------------------------------------------------------------------
+// Clientes
+// ---------------------------------------------------------------------------
+
+enum CustomerStatus {
+  ATIVO
+  INATIVO
+  VIP
+}
+
+model Customer {
+  id             String @id @default(cuid())
+  organizationId String
+  storeId        String
+
+  nome       String
+  whatsapp   String
+  email      String?
+  nascimento DateTime?
+  cidade     String?
+  estado     String?   @db.VarChar(2)
+
+  sellerId String?
+  status   CustomerStatus @default(ATIVO)
+
+  // Consentimento vigente para campanhas de marketing (detalhe fica em Consent).
+  consentimentoWhatsapp Boolean @default(false)
+
+  // Agregados desnormalizados, recalculados a cada venda para leitura barata.
+  ultimaCompra     DateTime?
+  totalGasto       Decimal   @default(0) @db.Decimal(10, 2)
+  ticketMedio      Decimal   @default(0) @db.Decimal(10, 2)
+  totalCompras     Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  seller       Seller?              @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  preferences  CustomerPreference?
+  tags         CustomerTag[]
+  sales        Sale[]
+  exchanges    Exchange[]
+  tasks        Task[]
+  recipients   CampaignRecipient[]
+  messages     WhatsappMessage[]
+  consents     Consent[]
+
+  @@index([organizationId, storeId])
+  @@index([storeId, status])
+  @@index([whatsapp])
+  @@map("customers")
+}
+
+model CustomerPreference {
+  id         String @id @default(cuid())
+  customerId String @unique
+
+  tamanhoCamiseta String?
+  tamanhoCalca    String?
+  tamanhoCalcado  String?
+
+  estilo String?
+  // Listas curtas de texto livre; JSON evita tabelas auxiliares no MVP.
+  cores             Json?
+  marcas            Json?
+  categoriasFavoritas Json?
+  observacoes       String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_preferences")
+}
+
+model Tag {
+  id             String @id @default(cuid())
+  organizationId String
+  label          String
+  cor            String?
+
+  createdAt DateTime @default(now())
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customers    CustomerTag[]
+
+  @@unique([organizationId, label])
+  @@map("tags")
+}
+
+model CustomerTag {
+  customerId String
+  tagId      String
+
+  createdAt DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([customerId, tagId])
+  @@index([tagId])
+  @@map("customer_tags")
+}
+
+// ---------------------------------------------------------------------------
+// Catálogo
+// ---------------------------------------------------------------------------
+
+model Category {
+  id             String @id @default(cuid())
+  organizationId String
+  nome           String
+  slug           String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  products     Product[]
+
+  @@unique([organizationId, slug])
+  @@map("categories")
+}
+
+enum ProductStatus {
+  ATIVO
+  INATIVO
+  ARQUIVADO
+}
+
+model Product {
+  id             String @id @default(cuid())
+  organizationId String
+  storeId        String
+  categoryId     String?
+
+  nome     String
+  sku      String
+  colecao  String?
+  preco    Decimal       @db.Decimal(10, 2)
+  status   ProductStatus @default(ATIVO)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category     Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  variants     ProductVariant[]
+
+  @@unique([organizationId, sku])
+  @@index([storeId, status])
+  @@map("products")
+}
+
+model ProductVariant {
+  id        String @id @default(cuid())
+  productId String
+
+  sku     String
+  tamanho String
+  cor     String
+  // Sobrescreve o preço do produto quando a variante custa diferente.
+  preco   Decimal? @db.Decimal(10, 2)
+  estoque Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  saleItems SaleItem[]
+  exchanges ExchangeItem[]
+
+  @@unique([productId, tamanho, cor])
+  @@unique([sku])
+  @@map("product_variants")
+}
+
+// ---------------------------------------------------------------------------
+// Vendas
+// ---------------------------------------------------------------------------
+
+enum SaleStatus {
+  RASCUNHO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum PaymentMethod {
+  DINHEIRO
+  PIX
+  DEBITO
+  CREDITO
+  CREDIARIO
+  OUTRO
+}
+
+model Sale {
+  id             String @id @default(cuid())
+  organizationId String
+  storeId        String
+  customerId     String?
+  sellerId       String?
+
+  numero        Int
+  status        SaleStatus    @default(RASCUNHO)
+  subtotal      Decimal       @default(0) @db.Decimal(10, 2)
+  desconto      Decimal       @default(0) @db.Decimal(10, 2)
+  total         Decimal       @default(0) @db.Decimal(10, 2)
+  formaPagamento PaymentMethod?
+  observacao    String?       @db.Text
+
+  // Preenchido quando a venda é atribuída a uma campanha (receita originada).
+  campaignId String?
+
+  concluidaEm DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  seller       Seller?      @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  campaign     Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  items        SaleItem[]
+  exchanges    Exchange[]
+
+  @@unique([storeId, numero])
+  @@index([storeId, status])
+  @@index([customerId])
+  @@index([campaignId])
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String @id @default(cuid())
+  saleId    String
+  variantId String
+
+  quantidade    Int
+  precoUnitario Decimal @db.Decimal(10, 2)
+  desconto      Decimal @default(0) @db.Decimal(10, 2)
+  total         Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  sale    Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([variantId])
+  @@map("sale_items")
+}
+
+enum ExchangeStatus {
+  ABERTA
+  CONCLUIDA
+  CANCELADA
+}
+
+model Exchange {
+  id         String @id @default(cuid())
+  saleId     String
+  customerId String?
+
+  status    ExchangeStatus @default(ABERTA)
+  motivo    String?        @db.Text
+  diferenca Decimal        @default(0) @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sale     Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  customer Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    ExchangeItem[]
+
+  @@index([saleId])
+  @@map("exchanges")
+}
+
+model ExchangeItem {
+  id         String @id @default(cuid())
+  exchangeId String
+  variantId  String
+
+  quantidade Int
+  devolucao  Boolean @default(true)
+
+  exchange Exchange       @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+  variant  ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([exchangeId])
+  @@map("exchange_items")
+}
+
+// ---------------------------------------------------------------------------
+// Relacionamento
+// ---------------------------------------------------------------------------
+
+enum TaskStatus {
+  PENDENTE
+  CONCLUIDA
+  CANCELADA
+}
+
+enum TaskPriority {
+  ALTA
+  MEDIA
+  BAIXA
+}
+
+model Task {
+  id             String @id @default(cuid())
+  organizationId String
+  storeId        String
+  customerId     String?
+  sellerId       String?
+  criadoPorId    String?
+
+  titulo    String
+  descricao String?      @db.Text
+  status    TaskStatus   @default(PENDENTE)
+  prioridade TaskPriority @default(MEDIA)
+  venceEm   DateTime?
+
+  concluidaEm DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  seller       Seller?      @relation("TaskResponsavel", fields: [sellerId], references: [id], onDelete: SetNull)
+  criadoPor    User?        @relation("TaskCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, status])
+  @@index([customerId])
+  @@map("tasks")
+}
+
+enum CampaignStatus {
+  RASCUNHO
+  AGENDADA
+  ENVIANDO
+  ENVIADA
+  PAUSADA
+  CANCELADA
+}
+
+model Campaign {
+  id             String @id @default(cuid())
+  organizationId String
+  storeId        String
+
+  nome           String
+  status         CampaignStatus @default(RASCUNHO)
+  templateNome   String?
+  // Regras de segmentação (AND/OR) serializadas; o builder chega em fase futura.
+  segmentoRegras Json?
+  agendadaPara   DateTime?
+  enviadaEm      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  recipients   CampaignRecipient[]
+  messages     WhatsappMessage[]
+  sales        Sale[]
+
+  @@index([storeId, status])
+  @@map("campaigns")
+}
+
+enum RecipientStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  REPLIED
+  FAILED
+  OPT_OUT
+}
+
+model CampaignRecipient {
+  id         String @id @default(cuid())
+  campaignId String
+  customerId String
+
+  status RecipientStatus @default(QUEUED)
+  erro   String?         @db.Text
+
+  enviadoEm   DateTime?
+  entregueEm  DateTime?
+  lidoEm      DateTime?
+  respondidoEm DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  messages WhatsappMessage[]
+
+  @@unique([campaignId, customerId])
+  @@index([status])
+  @@map("campaign_recipients")
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model WhatsappMessage {
+  id          String  @id @default(cuid())
+  customerId  String?
+  campaignId  String?
+  recipientId String?
+
+  direction MessageDirection
+  // ID da mensagem na Meta Cloud API, usado para casar webhooks de status.
+  externalId String?          @unique
+  template   String?
+  corpo      String?          @db.Text
+  status     RecipientStatus?
+  erro       String?          @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer  Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  campaign  Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  recipient CampaignRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([campaignId])
+  @@map("whatsapp_messages")
+}
+
+// ---------------------------------------------------------------------------
+// LGPD
+// ---------------------------------------------------------------------------
+
+enum ConsentChannel {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+model Consent {
+  id             String @id @default(cuid())
+  organizationId String
+  customerId     String
+
+  canal         ConsentChannel @default(WHATSAPP)
+  concedido     Boolean
+  origem        String?
+  versaoTexto   String?
+  ip            String?        @db.VarChar(45)
+  concedidoEm   DateTime?
+  revogadoEm    DateTime?
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, canal])
+  @@map("consents")
+}
+
+/// Bloqueio definitivo — quem está aqui nunca entra em campanha de marketing.
+model SuppressionEntry {
+  id             String @id @default(cuid())
+  organizationId String
+  whatsapp       String
+  motivo         String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([organizationId, whatsapp])
+  @@map("suppression_list")
+}
+
+model ActivityLog {
+  id             String @id @default(cuid())
+  organizationId String
+
+  entidade   String
+  entidadeId String
+  acao       String
+  autorId    String?
+  payload    Json?
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entidade, entidadeId])
+  @@map("activity_logs")
+}
