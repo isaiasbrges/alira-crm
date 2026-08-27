@@ -2,7 +2,8 @@
 
 import { Prisma } from "@prisma/client";
 
-import { criarCliente } from "@/repositories/customers";
+import { atualizarStatusCliente, criarCliente } from "@/repositories/customers";
+import type { CustomerStatus } from "@/types/customer";
 
 export type CriarClienteState = {
   erro?: string;
@@ -45,4 +46,12 @@ export async function criarClienteAction(
   }
 
   return {};
+}
+
+/** Chamada direto do cliente ao soltar um card em outra coluna do board. */
+export async function atualizarStatusClienteAction(
+  clienteId: string,
+  status: CustomerStatus,
+): Promise<void> {
+  await atualizarStatusCliente(clienteId, status);
 }

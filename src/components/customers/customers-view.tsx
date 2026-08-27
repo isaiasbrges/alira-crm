@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Search, UsersRound } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Kanban,
+  Search,
+  Table2,
+  UsersRound,
+} from "lucide-react";
 
 import { formatNumber } from "@/lib/format";
 import type { Customer, CustomerFilters } from "@/types/customer";
@@ -15,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
+import { CustomerBoard } from "@/components/customers/customer-board";
 import { CustomerTable } from "@/components/customers/customer-table";
 import { CreateCustomerDialog } from "@/components/customers/create-customer-dialog";
 import {
@@ -36,6 +44,9 @@ export function CustomersView({ clientes, options }: CustomersViewProps) {
     CUSTOMER_FILTERS_DEFAULT,
   );
   const [page, setPage] = React.useState(1);
+  const [visualizacao, setVisualizacao] = React.useState<"tabela" | "board">(
+    "tabela",
+  );
 
   const kpis = React.useMemo(() => buildCustomerKpis(clientes), [clientes]);
   const filtered = React.useMemo(
@@ -104,6 +115,31 @@ export function CustomersView({ clientes, options }: CustomersViewProps) {
           activeCount={activeCount}
           options={options}
         />
+
+        <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
+          <Button
+            type="button"
+            variant={visualizacao === "tabela" ? "secondary" : "ghost"}
+            size="icon"
+            className="size-8"
+            aria-label="Ver como tabela"
+            aria-pressed={visualizacao === "tabela"}
+            onClick={() => setVisualizacao("tabela")}
+          >
+            <Table2 className="size-4" />
+          </Button>
+          <Button
+            type="button"
+            variant={visualizacao === "board" ? "secondary" : "ghost"}
+            size="icon"
+            className="size-8"
+            aria-label="Ver como board"
+            aria-pressed={visualizacao === "board"}
+            onClick={() => setVisualizacao("board")}
+          >
+            <Kanban className="size-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="mt-3">
@@ -116,49 +152,64 @@ export function CustomersView({ clientes, options }: CustomersViewProps) {
         />
       </div>
 
-      <Card className="mt-4 gap-0 overflow-hidden py-0">
-        {visiveis.length === 0 ? (
-          <EmptyState
-            onReset={resetFilters}
-            hasFilters={activeCount > 0 || filters.busca !== ""}
-          />
+      {visualizacao === "board" ? (
+        filtered.length === 0 ? (
+          <Card className="mt-4 gap-0 overflow-hidden py-0">
+            <EmptyState
+              onReset={resetFilters}
+              hasFilters={activeCount > 0 || filters.busca !== ""}
+            />
+          </Card>
         ) : (
-          <CustomerTable customers={visiveis} />
-        )}
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
-          <span className="text-xs text-muted-foreground">
-            Mostrando {visiveis.length} de {formatNumber(filtered.length)}{" "}
-            clientes
-          </span>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
-              disabled={paginaAtual <= 1}
-              className="gap-1"
-            >
-              <ChevronLeft className="size-4" />
-              Anterior
-            </Button>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {paginaAtual} / {paginas}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((value) => Math.min(paginas, value + 1))}
-              disabled={paginaAtual >= paginas}
-              className="gap-1"
-            >
-              Próxima
-              <ChevronRight className="size-4" />
-            </Button>
+          <div className="mt-4">
+            <CustomerBoard customers={filtered} />
           </div>
-        </div>
-      </Card>
+        )
+      ) : (
+        <Card className="mt-4 gap-0 overflow-hidden py-0">
+          {visiveis.length === 0 ? (
+            <EmptyState
+              onReset={resetFilters}
+              hasFilters={activeCount > 0 || filters.busca !== ""}
+            />
+          ) : (
+            <CustomerTable customers={visiveis} />
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+            <span className="text-xs text-muted-foreground">
+              Mostrando {visiveis.length} de {formatNumber(filtered.length)}{" "}
+              clientes
+            </span>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+                disabled={paginaAtual <= 1}
+                className="gap-1"
+              >
+                <ChevronLeft className="size-4" />
+                Anterior
+              </Button>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {paginaAtual} / {paginas}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((value) => Math.min(paginas, value + 1))}
+                disabled={paginaAtual >= paginas}
+                className="gap-1"
+              >
+                Próxima
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
     </>
   );
 }

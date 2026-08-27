@@ -106,6 +106,12 @@ const STATUS_PARA_TELA: Record<string, CustomerStatus> = {
   VIP: "vip",
 };
 
+const STATUS_PARA_BANCO: Record<CustomerStatus, "ATIVO" | "INATIVO" | "VIP"> = {
+  ativo: "ATIVO",
+  inativo: "INATIVO",
+  vip: "VIP",
+};
+
 function paraArrayDeString(valor: unknown): string[] {
   return Array.isArray(valor)
     ? valor.filter((item): item is string => typeof item === "string")
@@ -243,5 +249,18 @@ export async function criarCliente(input: CriarClienteInput) {
       estado: input.estado ?? null,
       sellerId: input.sellerId ?? null,
     },
+  });
+}
+
+/** Move o cliente entre Ativo/Inativo/VIP — usado pelo board em Clientes. */
+export async function atualizarStatusCliente(
+  clienteId: string,
+  status: CustomerStatus,
+): Promise<void> {
+  const db = await getTenantDb();
+
+  await db.customer.update({
+    where: { id: clienteId },
+    data: { status: STATUS_PARA_BANCO[status] },
   });
 }
