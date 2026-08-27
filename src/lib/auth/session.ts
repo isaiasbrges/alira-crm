@@ -48,6 +48,28 @@ export type Session = {
 };
 
 /**
+ * Lojas que um usuário pode acessar, ou `null` quando não há restrição —
+ * acessa todas as lojas ativas da organização, inclusive as criadas depois.
+ * OWNER e SUPER_ADMIN nunca são restringíveis: precisam ver a empresa
+ * inteira. Exportado pra `loginAction` validar o mesmo jeito no login por
+ * link de loja (`/login/[storeId]`).
+ */
+export async function idsDeLojaPermitidos(
+  userId: string,
+  role: UserRole,
+): Promise<Set<string> | null> {
+  if (role === "SUPER_ADMIN" || role === "OWNER") return null;
+
+  const acessos = await prisma.storeAccess.findMany({
+    where: { userId },
+    select: { storeId: true },
+  });
+  if (acessos.length === 0) return null;
+
+  return new Set(acessos.map((acesso) => acesso.storeId));
+}
+
+/**
  * Lê a sessão do usuário autenticado.
  *
  * O cookie carrega só o essencial (userId, organizationId, activeStoreId),
@@ -86,14 +108,20 @@ export async function getSession(): Promise<Session | null> {
   // organização depois, o token velho não vale mais.
   if (user.organizationId !== payload.organizationId) return null;
 
-  const stores = await prisma.store.findMany({
+  let stores = await prisma.store.findMany({
     where: { organizationId: user.organizationId, ativa: true },
     select: { id: true, nome: true, logoUrl: true, corDestaque: true },
     orderBy: { nome: "asc" },
   });
 
+  const permitidas = await idsDeLojaPermitidos(user.id, user.role);
+  if (permitidas) {
+    stores = stores.filter((store) => permitidas.has(store.id));
+  }
+
   // SUPER_ADMIN não opera loja — a organização interna do time Alira nem
-  // precisa ter uma. Qualquer outro papel sem loja ativa é sessão inválida.
+  // precisa ter uma. Qualquer outro papel sem loja ativa (ou sem loja
+  // permitida) é sessão inválida.
   if (stores.length === 0 && user.role !== "SUPER_ADMIN") return null;
 
   const activeStoreId =

@@ -2,6 +2,7 @@
 
 import { salvarWebhookN8n } from "@/repositories/organizations";
 import { definirSenhaPdv } from "@/repositories/pdv-lock";
+import { definirAcessoLojas } from "@/repositories/store-access";
 
 export type SalvarWebhookN8nState = {
   erro?: string;
@@ -58,6 +59,27 @@ export async function definirSenhaPdvAction(
 
     await definirSenhaPdv(storeId, senha);
     return { sucesso: true };
+  } catch (erro) {
+    if (erro instanceof Error) return { erro: erro.message };
+    throw erro;
+  }
+}
+
+export type DefinirAcessoLojasResult = {
+  erro?: string;
+};
+
+/**
+ * Chamada direto do cliente (não é form action) — os IDs marcados vêm de um
+ * Set no componente, não dá pra carregar limpo num FormData.
+ */
+export async function definirAcessoLojasAction(
+  userId: string,
+  storeIds: string[],
+): Promise<DefinirAcessoLojasResult> {
+  try {
+    await definirAcessoLojas(userId, storeIds);
+    return {};
   } catch (erro) {
     if (erro instanceof Error) return { erro: erro.message };
     throw erro;

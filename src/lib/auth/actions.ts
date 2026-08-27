@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from "@/lib/auth/cookie";
 import { verificarSenha } from "@/lib/auth/password";
-import { getSession } from "@/lib/auth/session";
+import { getSession, idsDeLojaPermitidos } from "@/lib/auth/session";
 import { assinarSessionToken } from "@/lib/auth/session-token";
 import { getTenantDb } from "@/lib/tenant/db";
 
@@ -74,26 +74,37 @@ export async function loginAction(
     redirect("/admin");
   }
 
+  // null = sem restrição (acessa toda loja ativa da organização).
+  const permitidas = await idsDeLojaPermitidos(user.id, user.role);
+
   const primeiraLoja = await prisma.store.findFirst({
-    where: { organizationId: user.organizationId, ativa: true },
+    where: {
+      organizationId: user.organizationId,
+      ativa: true,
+      ...(permitidas ? { id: { in: Array.from(permitidas) } } : {}),
+    },
     select: { id: true },
     orderBy: { nome: "asc" },
   });
 
   if (!primeiraLoja) {
     return {
-      erro: "Nenhuma loja ativa nesta organização. Fale com o suporte.",
+      erro: "Nenhuma loja disponível para este usuário. Fale com o suporte.",
     };
   }
 
-  let activeStoreId = user.ultimaStoreId ?? primeiraLoja.id;
+  let activeStoreId =
+    user.ultimaStoreId && (!permitidas || permitidas.has(user.ultimaStoreId))
+      ? user.ultimaStoreId
+      : primeiraLoja.id;
 
   // Login por link de loja (/login/[storeId]): o storeId vem escondido no
-  // form. Só vale se pertencer à organização deste usuário — do contrário,
-  // é ignorado silenciosamente e o login segue pelo caminho normal.
+  // form. Só vale se pertencer à organização deste usuário e se ele tiver
+  // acesso a ela — do contrário, é ignorado silenciosamente e o login segue
+  // pelo caminho normal.
   const storeIdDoLink = String(formData.get("storeId") ?? "").trim();
   let vindoDeLinkDeLoja = false;
-  if (storeIdDoLink) {
+  if (storeIdDoLink && (!permitidas || permitidas.has(storeIdDoLink))) {
     const lojaDoLink = await prisma.store.findFirst({
       where: { id: storeIdDoLink, organizationId: user.organizationId, ativa: true },
       select: { id: true },

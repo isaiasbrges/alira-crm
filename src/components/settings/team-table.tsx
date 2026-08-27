@@ -14,8 +14,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RoleBadge } from "@/components/settings/role-badge";
+import { StoreAccessDialog } from "@/components/settings/store-access-dialog";
 
-export function TeamTable({ team }: { team: TeamMember[] }) {
+type LojaResumo = { id: string; nome: string };
+
+export function TeamTable({
+  team,
+  stores,
+  podeGerenciarAcesso,
+}: {
+  team: TeamMember[];
+  stores: LojaResumo[];
+  podeGerenciarAcesso: boolean;
+}) {
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -36,6 +47,7 @@ export function TeamTable({ team }: { team: TeamMember[] }) {
           <TableRow>
             <TableHead>Usuário</TableHead>
             <TableHead>Papel</TableHead>
+            <TableHead>Lojas</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
@@ -59,6 +71,24 @@ export function TeamTable({ team }: { team: TeamMember[] }) {
               </TableCell>
               <TableCell>
                 <RoleBadge role={membro.role} />
+              </TableCell>
+              <TableCell>
+                {membro.role === "SUPER_ADMIN" ? (
+                  <span className="text-xs text-muted-foreground">—</span>
+                ) : podeGerenciarAcesso && membro.role !== "OWNER" ? (
+                  <StoreAccessDialog
+                    userId={membro.id}
+                    userNome={membro.nome}
+                    stores={stores}
+                    accessIds={membro.storeAccessIds}
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    {membro.storeAccessIds
+                      ? `${membro.storeAccessIds.length} de ${stores.length} lojas`
+                      : "Todas as lojas"}
+                  </span>
+                )}
               </TableCell>
               <TableCell>
                 <Badge variant={membro.ativo ? "success" : "outline"}>

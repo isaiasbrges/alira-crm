@@ -69,6 +69,7 @@ model Organization {
   consents            Consent[]
   suppressionEntries  SuppressionEntry[]
   activityLogs        ActivityLog[]
+  storeAccess         StoreAccess[]
 
   @@map("organizations")
 }
@@ -97,10 +98,33 @@ model Store {
   tasks        Task[]
   segments     Segment[]
   campaigns    Campaign[]
+  storeAccess  StoreAccess[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@map("stores")
+}
+
+/// Restringe quais lojas um usuário acessa. Ausência de linhas para um
+/// usuário = sem restrição, acessa todas as lojas ativas da organização
+/// (inclusive lojas criadas depois) — é o comportamento de sempre, preservado
+/// pra quem ninguém restringiu explicitamente.
+model StoreAccess {
+  id             String @id @default(cuid())
+  organizationId String
+  userId         String
+  storeId        String
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([organizationId])
+  @@index([storeId])
+  @@map("store_access")
 }
 
 // ---------------------------------------------------------------------------
@@ -133,9 +157,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   seller       Seller?
-  tasks        Task[]       @relation("TaskCriador")
+  tasks        Task[]        @relation("TaskCriador")
+  storeAccess  StoreAccess[]
 
   @@index([organizationId])
   @@map("users")

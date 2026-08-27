@@ -20,6 +20,7 @@ type SettingsTabsProps = {
     temSenha: boolean;
     podeGerenciar: boolean;
   };
+  podeGerenciarAcesso: boolean;
 };
 
 export function SettingsTabs({
@@ -27,6 +28,7 @@ export function SettingsTabs({
   team,
   integracoes,
   pdv,
+  podeGerenciarAcesso,
 }: SettingsTabsProps) {
   return (
     <Tabs defaultValue="geral">
@@ -42,7 +44,11 @@ export function SettingsTabs({
       </TabsContent>
 
       <TabsContent value="usuarios" className="mt-5">
-        <TeamTable team={team} />
+        <TeamTable
+          team={team}
+          stores={workspace.stores}
+          podeGerenciarAcesso={podeGerenciarAcesso}
+        />
       </TabsContent>
 
       <TabsContent value="integracoes" className="mt-5">

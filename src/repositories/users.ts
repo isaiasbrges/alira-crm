@@ -11,8 +11,26 @@ export async function listarUsuariosTela(): Promise<TeamMember[]> {
 
   const usuarios = await db.user.findMany({
     orderBy: { nome: "asc" },
-    select: { id: true, nome: true, email: true, role: true, ativo: true },
+    select: {
+      id: true,
+      nome: true,
+      email: true,
+      role: true,
+      ativo: true,
+      storeAccess: { select: { storeId: true } },
+    },
   });
 
-  return usuarios;
+  return usuarios.map((usuario) => ({
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    role: usuario.role,
+    ativo: usuario.ativo,
+    // OWNER nunca é restringível, mesmo que existam linhas antigas.
+    storeAccessIds:
+      usuario.role === "OWNER" || usuario.storeAccess.length === 0
+        ? null
+        : usuario.storeAccess.map((acesso) => acesso.storeId),
+  }));
 }

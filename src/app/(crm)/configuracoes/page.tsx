@@ -47,6 +47,7 @@ export default async function ConfiguracoesPage() {
           temSenha: pdv.temSenha,
           podeGerenciar: ctx.role === "OWNER" || ctx.role === "MANAGER",
         }}
+        podeGerenciarAcesso={ctx.role === "OWNER" || ctx.role === "MANAGER"}
       />
     </>
   );
