@@ -23,6 +23,7 @@ export type Store = {
   id: string;
   nome: string;
   logoUrl: string | null;
+  corDestaque: string | null;
 };
 
 export type Organization = {

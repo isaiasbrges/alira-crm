@@ -4,6 +4,7 @@ import type { Workspace } from "@/types/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PdvPasswordForm } from "@/components/settings/pdv-password-form";
+import { StoreColorForm } from "@/components/settings/store-color-form";
 import { StoreLogoForm } from "@/components/settings/store-logo-form";
 
 type PdvConfig = {
@@ -53,6 +54,21 @@ export function GeneralSettings({
           <StoreLogoForm
             storeNome={workspace.store.nome}
             logoUrl={workspace.store.logoUrl}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <h2 className="text-sm font-semibold">Cor de destaque</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Cor da marca de {workspace.store.nome}: botões, links e o item
+          ativo da sidebar.
+        </p>
+
+        <div className="mt-4">
+          <StoreColorForm
+            storeId={workspace.store.id}
+            cor={workspace.store.corDestaque}
           />
         </div>
       </div>

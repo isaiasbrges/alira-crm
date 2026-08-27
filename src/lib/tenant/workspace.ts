@@ -39,6 +39,7 @@ export async function carregarWorkspace(): Promise<{
     id: store.id,
     nome: store.nome,
     logoUrl: store.logoUrl,
+    corDestaque: store.corDestaque,
   }));
   const ativa =
     stores.find((store) => store.id === session.activeStoreId) ?? stores[0];

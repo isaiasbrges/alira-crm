@@ -32,6 +32,7 @@ export type SessionStore = {
   id: string;
   nome: string;
   logoUrl: string | null;
+  corDestaque: string | null;
 };
 
 export type Session = {
@@ -87,7 +88,7 @@ export async function getSession(): Promise<Session | null> {
 
   const stores = await prisma.store.findMany({
     where: { organizationId: user.organizationId, ativa: true },
-    select: { id: true, nome: true, logoUrl: true },
+    select: { id: true, nome: true, logoUrl: true, corDestaque: true },
     orderBy: { nome: "asc" },
   });
 

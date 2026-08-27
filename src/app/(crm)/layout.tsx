@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth/session";
+import { regraCssCorDestaque } from "@/lib/theme-color";
 import { carregarWorkspace } from "@/lib/tenant/workspace";
 import { AppShell } from "@/components/layout/app-shell";
 
@@ -15,9 +16,14 @@ export default async function CrmLayout({ children }: LayoutProps<"/">) {
   // URL, onde poderia ser trocado à mão.
   const { workspace, user } = await carregarWorkspace();
 
+  const cssCorDestaque = regraCssCorDestaque(workspace.store.corDestaque);
+
   return (
-    <AppShell workspace={workspace} user={user}>
-      {children}
-    </AppShell>
+    <>
+      {cssCorDestaque && <style>{cssCorDestaque}</style>}
+      <AppShell workspace={workspace} user={user}>
+        {children}
+      </AppShell>
+    </>
   );
 }

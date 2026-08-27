@@ -83,6 +83,8 @@ model Store {
   logoUrl        String? @db.LongText
   /// Hash da senha que trava a abertura do PDV desta loja. Nulo = PDV não pede senha.
   pdvSenhaHash   String? @db.VarChar(255)
+  /// Cor de destaque da marca, em hex (#RRGGBB). Nulo = azul padrão do tema.
+  corDestaque    String? @db.VarChar(7)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

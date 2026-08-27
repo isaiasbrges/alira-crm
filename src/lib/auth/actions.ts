@@ -257,3 +257,41 @@ export async function atualizarLogoLojaAction(
 
   return {};
 }
+
+const HEX_VALIDO = /^#[0-9A-Fa-f]{6}$/;
+
+export type AtualizarCorState = {
+  erro?: string;
+};
+
+/**
+ * Salva (ou remove, com `intent=remover`) a cor de destaque da loja. Aplica
+ * em `--primary`, `--ring` e no item ativo da sidebar — ver `theme-color.ts`.
+ */
+export async function atualizarCorLojaAction(
+  _prevState: AtualizarCorState,
+  formData: FormData,
+): Promise<AtualizarCorState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const storeId = String(formData.get("storeId") ?? session.activeStoreId);
+  const db = await getTenantDb();
+
+  if (String(formData.get("intent") ?? "") === "remover") {
+    await db.store.update({ where: { id: storeId }, data: { corDestaque: null } });
+    return {};
+  }
+
+  const cor = String(formData.get("cor") ?? "").trim();
+  if (!HEX_VALIDO.test(cor)) {
+    return { erro: "Cor inválida. Use o formato #RRGGBB." };
+  }
+
+  await db.store.update({
+    where: { id: storeId },
+    data: { corDestaque: cor.toUpperCase() },
+  });
+
+  return {};
+}
