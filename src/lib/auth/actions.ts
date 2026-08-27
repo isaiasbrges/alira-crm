@@ -41,6 +41,7 @@ export async function loginAction(
       id: true,
       senhaHash: true,
       ativo: true,
+      role: true,
       organizationId: true,
       ultimaStoreId: true,
       organization: { select: { status: true } },
@@ -57,6 +58,21 @@ export async function loginAction(
 
   const senhaOk = await verificarSenha(senha, user.senhaHash);
   if (!senhaOk) return credenciaisInvalidas;
+
+  // SUPER_ADMIN não opera loja — segue direto pro painel master, sem exigir
+  // que a organização interna tenha uma loja cadastrada.
+  if (user.role === "SUPER_ADMIN") {
+    const token = await assinarSessionToken({
+      userId: user.id,
+      organizationId: user.organizationId,
+      activeStoreId: null,
+    });
+
+    const jar = await cookies();
+    jar.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+
+    redirect("/admin");
+  }
 
   const primeiraLoja = await prisma.store.findFirst({
     where: { organizationId: user.organizationId, ativa: true },

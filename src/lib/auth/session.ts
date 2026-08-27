@@ -37,10 +37,13 @@ export type SessionStore = {
 export type Session = {
   user: SessionUser;
   organization: SessionOrganization;
-  /** Lojas da organização que este usuário pode acessar. */
+  /** Lojas da organização que este usuário pode acessar. Vazio para SUPER_ADMIN. */
   stores: SessionStore[];
-  /** Loja ativa no momento. Sempre uma das listadas em `stores`. */
-  activeStoreId: string;
+  /**
+   * Loja ativa no momento — uma das listadas em `stores`, ou nula para
+   * SUPER_ADMIN, que não opera loja nenhuma (só o painel master).
+   */
+  activeStoreId: string | null;
 };
 
 /**
@@ -88,13 +91,16 @@ export async function getSession(): Promise<Session | null> {
     orderBy: { nome: "asc" },
   });
 
-  if (stores.length === 0) return null;
+  // SUPER_ADMIN não opera loja — a organização interna do time Alira nem
+  // precisa ter uma. Qualquer outro papel sem loja ativa é sessão inválida.
+  if (stores.length === 0 && user.role !== "SUPER_ADMIN") return null;
 
-  const activeStoreId = stores.some(
-    (store) => store.id === payload.activeStoreId,
-  )
-    ? payload.activeStoreId
-    : stores[0].id;
+  const activeStoreId =
+    stores.length === 0
+      ? null
+      : stores.some((store) => store.id === payload.activeStoreId)
+        ? payload.activeStoreId
+        : stores[0].id;
 
   return {
     user: {

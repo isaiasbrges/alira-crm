@@ -9,11 +9,14 @@ import { jwtVerify, SignJWT } from "jose";
  * banco a cada requisição: quem é o usuário, de qual organização, e qual
  * loja está ativa. Papel e nome também entram para a sidebar não precisar
  * de uma segunda consulta só para se desenhar.
+ *
+ * `activeStoreId` é nulo para SUPER_ADMIN: o time Alira não é dono de loja
+ * nenhuma, só enxerga o painel master entre organizações.
  */
 export type SessionTokenPayload = {
   userId: string;
   organizationId: string;
-  activeStoreId: string;
+  activeStoreId: string | null;
 };
 
 const ALGORITMO = "HS256";
@@ -47,7 +50,7 @@ export async function verificarSessionToken(
     if (
       typeof payload.userId !== "string" ||
       typeof payload.organizationId !== "string" ||
-      typeof payload.activeStoreId !== "string"
+      (typeof payload.activeStoreId !== "string" && payload.activeStoreId !== null)
     ) {
       return null;
     }

@@ -2,6 +2,8 @@ import "server-only";
 
 import crypto from "node:crypto";
 
+import type { OrganizationStatus } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { getTenantContext, isPlatformAdmin } from "@/lib/tenant/context";
 import { getTenantDb } from "@/lib/tenant/db";
@@ -64,6 +66,81 @@ export async function listarOrganizacoesComoAdmin() {
       _count: { select: { stores: true, users: true, customers: true } },
     },
     orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * Detalhe de uma organização cliente para o painel master: dados de
+ * configuração e todas as lojas, inclusive as desativadas — é justamente
+ * o botão de ativar/desativar que o painel expõe.
+ */
+export async function buscarOrganizacaoComoAdmin(organizationId: string) {
+  const ctx = await getTenantContext();
+  if (!isPlatformAdmin(ctx)) {
+    throw new Error("Acesso restrito ao painel master.");
+  }
+
+  const organizacao = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: {
+      id: true,
+      nome: true,
+      slug: true,
+      status: true,
+      plano: true,
+      interna: true,
+      createdAt: true,
+      stores: {
+        select: { id: true, nome: true, ativa: true, createdAt: true },
+        orderBy: { nome: "asc" },
+      },
+      _count: { select: { users: true, customers: true } },
+    },
+  });
+
+  // A organização interna do time Alira não é uma empresa cliente — não
+  // aparece na listagem e também não deve ser editável por essa tela.
+  if (!organizacao || organizacao.interna) {
+    throw new Error("Organização não encontrada.");
+  }
+
+  return organizacao;
+}
+
+/** Atualiza status e plano de uma organização cliente. */
+export async function atualizarOrganizacaoComoAdmin(
+  organizationId: string,
+  dados: { status: OrganizationStatus; plano: string | null },
+): Promise<void> {
+  const ctx = await getTenantContext();
+  if (!isPlatformAdmin(ctx)) {
+    throw new Error("Acesso restrito ao painel master.");
+  }
+
+  await prisma.organization.update({
+    where: { id: organizationId, interna: false },
+    data: { status: dados.status, plano: dados.plano },
+  });
+}
+
+/**
+ * Ativa ou desativa o acesso a uma loja de uma organização cliente.
+ * Uma loja desativada some do seletor de todo mundo na organização — é o
+ * mecanismo de "acesso" que já existe (`getSession` só lista `ativa: true`),
+ * só que agora acionável pelo painel master, não só por quem já está dentro.
+ */
+export async function alternarAcessoLojaComoAdmin(
+  storeId: string,
+  ativa: boolean,
+): Promise<void> {
+  const ctx = await getTenantContext();
+  if (!isPlatformAdmin(ctx)) {
+    throw new Error("Acesso restrito ao painel master.");
+  }
+
+  await prisma.store.update({
+    where: { id: storeId },
+    data: { ativa },
   });
 }
 
