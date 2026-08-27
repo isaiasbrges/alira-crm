@@ -1,15 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import {
-  MOCK_ATTENTION_CUSTOMERS,
-  MOCK_HERO_KPIS,
-  MOCK_PERFORMANCE_SERIES,
-  MOCK_RECENT_CAMPAIGNS,
-  MOCK_STAT_TILES,
-  MOCK_TODAY_TASKS,
-  MOCK_TOP_SELLERS,
-} from "@/mocks/dashboard";
+import { carregarDashboardTela } from "@/repositories/analytics";
 import { carregarWorkspace } from "@/lib/tenant/workspace";
 import { PageHeader } from "@/components/layout/page-header";
 import { PeriodPicker } from "@/components/layout/period-picker";
@@ -34,9 +26,18 @@ function saudacao(): string {
   return "Boa noite";
 }
 
-function CardLink({ href, children }: { href: string; children: React.ReactNode }) {
+function CardLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
   return (
-    <Link href={href} className="text-sm font-medium text-primary hover:underline">
+    <Link
+      href={href}
+      className="text-sm font-medium text-primary hover:underline"
+    >
       {children}
     </Link>
   );
@@ -45,6 +46,15 @@ function CardLink({ href, children }: { href: string; children: React.ReactNode 
 export default async function DashboardPage() {
   const { user } = await carregarWorkspace();
   const primeiroNome = user.nome.split(" ")[0];
+  const {
+    heroKpis,
+    statTiles,
+    performanceSeries,
+    attentionCustomers,
+    recentCampaigns,
+    todayTasks,
+    topSellers,
+  } = await carregarDashboardTela();
 
   return (
     <>
@@ -63,7 +73,7 @@ export default async function DashboardPage() {
         aria-label="Indicadores principais"
         className="grid gap-4 *:min-w-0 lg:grid-cols-2"
       >
-        {MOCK_HERO_KPIS.map((kpi) => (
+        {heroKpis.map((kpi) => (
           <HeroKpiCard key={kpi.id} kpi={kpi} />
         ))}
       </section>
@@ -93,24 +103,26 @@ export default async function DashboardPage() {
           </CardHeader>
 
           <CardContent className="pb-6">
-            <PerformanceChart data={MOCK_PERFORMANCE_SERIES} />
+            <PerformanceChart data={performanceSeries} />
           </CardContent>
         </Card>
 
         <Card className="gap-0 p-0">
           <CardHeader className="px-6 pb-4 pt-6">
             <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-base">Clientes que merecem atenção</CardTitle>
+              <CardTitle className="text-base">
+                Clientes que merecem atenção
+              </CardTitle>
               <CardLink href="/clientes">Ver todos</CardLink>
             </div>
           </CardHeader>
 
-          <AttentionCustomers customers={MOCK_ATTENTION_CUSTOMERS} />
+          <AttentionCustomers customers={attentionCustomers} />
         </Card>
       </section>
 
       <section aria-label="Indicadores da base" className="mt-4">
-        <StatTiles tiles={MOCK_STAT_TILES} />
+        <StatTiles tiles={statTiles} />
       </section>
 
       <section className="mt-4 grid gap-4 *:min-w-0 xl:grid-cols-3">
@@ -122,7 +134,7 @@ export default async function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pb-6">
-            <RecentCampaigns campaigns={MOCK_RECENT_CAMPAIGNS} />
+            <RecentCampaigns campaigns={recentCampaigns} />
           </CardContent>
         </Card>
 
@@ -134,7 +146,7 @@ export default async function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pb-6">
-            <TodayTasks tasks={MOCK_TODAY_TASKS} />
+            <TodayTasks tasks={todayTasks} />
           </CardContent>
         </Card>
 
@@ -146,7 +158,7 @@ export default async function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pb-6">
-            <TopSellers sellers={MOCK_TOP_SELLERS} />
+            <TopSellers sellers={topSellers} />
           </CardContent>
         </Card>
       </section>

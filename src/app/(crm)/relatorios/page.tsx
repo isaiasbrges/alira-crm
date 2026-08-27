@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 
-import { MOCK_CATEGORY_BREAKDOWN, MOCK_MONTHLY_REVENUE, MOCK_SELLER_PERFORMANCE } from "@/mocks/reports";
-import { MOCK_CAMPAIGNS } from "@/mocks/campaigns";
+import { carregarRelatoriosTela } from "@/repositories/analytics";
+import { listarCampanhasTela } from "@/repositories/campaigns";
 import { PageHeader } from "@/components/layout/page-header";
 import { PeriodPicker } from "@/components/layout/period-picker";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { MonthlyRevenueChart } from "@/components/reports/monthly-revenue-chart";
 import { CategoryBreakdownChart } from "@/components/reports/category-breakdown-chart";
 import { SellerPerformanceTable } from "@/components/reports/seller-performance-table";
@@ -14,8 +20,12 @@ export const metadata: Metadata = {
   title: "Relatórios · Alira CRM",
 };
 
-export default function RelatoriosPage() {
-  const campanhasEnviadas = MOCK_CAMPAIGNS.filter((campanha) => campanha.metrics);
+export default async function RelatoriosPage() {
+  const [{ monthlyRevenue, categoryBreakdown, sellerPerformance }, campanhas] =
+    await Promise.all([carregarRelatoriosTela(), listarCampanhasTela()]);
+  const campanhasEnviadas = campanhas.filter(
+    (campanha) => campanha.status === "enviada",
+  );
 
   return (
     <>
@@ -30,20 +40,24 @@ export default function RelatoriosPage() {
         <Card className="gap-0 xl:col-span-2">
           <CardHeader>
             <CardTitle>Receita por mês</CardTitle>
-            <CardDescription>Total da loja e parcela originada por campanhas.</CardDescription>
+            <CardDescription>
+              Total da loja e parcela originada por campanhas.
+            </CardDescription>
           </CardHeader>
           <CardContent className="pb-6">
-            <MonthlyRevenueChart data={MOCK_MONTHLY_REVENUE} />
+            <MonthlyRevenueChart data={monthlyRevenue} />
           </CardContent>
         </Card>
 
         <Card className="gap-0">
           <CardHeader>
             <CardTitle>Clientes por categoria</CardTitle>
-            <CardDescription>Categorias mais compradas na base.</CardDescription>
+            <CardDescription>
+              Categorias mais compradas na base.
+            </CardDescription>
           </CardHeader>
           <CardContent className="pb-6">
-            <CategoryBreakdownChart data={MOCK_CATEGORY_BREAKDOWN} />
+            <CategoryBreakdownChart data={categoryBreakdown} />
           </CardContent>
         </Card>
       </section>
@@ -54,7 +68,7 @@ export default function RelatoriosPage() {
             <CardTitle>Desempenho por vendedor</CardTitle>
             <CardDescription>Ranking completo do período.</CardDescription>
           </CardHeader>
-          <SellerPerformanceTable sellers={MOCK_SELLER_PERFORMANCE} />
+          <SellerPerformanceTable sellers={sellerPerformance} />
         </Card>
 
         <Card className="gap-0 overflow-hidden py-0">
