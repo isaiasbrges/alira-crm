@@ -7,12 +7,8 @@ import { formatNumber } from "@/lib/format";
 import type { CustomerFilters } from "@/types/customer";
 import { CUSTOMER_FILTERS_DEFAULT } from "@/types/customer";
 import { MOCK_CUSTOMERS } from "@/mocks/customers";
-import {
-  buildCustomerKpis,
-  filterCustomers,
-  paginate,
-  totalPages,
-} from "@/services/customer-metrics";
+import { buildCustomerKpis, filterCustomers } from "@/services/customer-metrics";
+import { paginate, totalPages } from "@/lib/pagination";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
