@@ -14,6 +14,11 @@ const DIRECAO_PARA_TELA: Record<string, MessageDirection> = {
  * Uma "conversa" por cliente com pelo menos uma mensagem registrada.
  * Mensagens recebidas chegam pelo webhook do n8n; as enviadas daqui também
  * são retransmitidas para lá (ver `enviarMensagemAtendimento`).
+ *
+ * Não filtra pela loja ativa: o WhatsApp é um único número por organização,
+ * e o webhook inbound não sabe qual loja o atendente tem selecionada no
+ * momento — filtrar por loja aqui faria mensagens novas "sumirem" até
+ * alguém trocar de loja no seletor.
  */
 export async function listarAtendimentosTela(): Promise<Conversation[]> {
   const ctx = await getTenantContext();
@@ -21,7 +26,6 @@ export async function listarAtendimentosTela(): Promise<Conversation[]> {
 
   const clientes = await db.customer.findMany({
     where: {
-      storeId: ctx.storeId ?? undefined,
       messages: { some: {} },
     },
     select: {
@@ -61,16 +65,15 @@ export async function listarAtendimentosTela(): Promise<Conversation[]> {
   });
 }
 
-/** Clientes sem nenhuma mensagem ainda — candidatos para "Nova conversa". */
+/**
+ * Clientes sem nenhuma mensagem ainda — candidatos para "Nova conversa".
+ * Também não filtra por loja ativa, pelo mesmo motivo de `listarAtendimentosTela`.
+ */
 export async function listarClientesSemConversa() {
-  const ctx = await getTenantContext();
-  const db = tenantDb(ctx);
+  const db = await tenantDb(await getTenantContext());
 
   return db.customer.findMany({
-    where: {
-      storeId: ctx.storeId ?? undefined,
-      messages: { none: {} },
-    },
+    where: { messages: { none: {} } },
     select: { id: true, nome: true },
     orderBy: { nome: "asc" },
   });
