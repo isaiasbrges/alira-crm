@@ -15,12 +15,18 @@ type SettingsTabsProps = {
     n8nWebhookUrl: string | null;
     inboundWebhookUrl: string;
   };
+  pdv: {
+    storeId: string;
+    temSenha: boolean;
+    podeGerenciar: boolean;
+  };
 };
 
 export function SettingsTabs({
   workspace,
   team,
   integracoes,
+  pdv,
 }: SettingsTabsProps) {
   return (
     <Tabs defaultValue="geral">
@@ -32,7 +38,7 @@ export function SettingsTabs({
       </TabsList>
 
       <TabsContent value="geral" className="mt-5">
-        <GeneralSettings workspace={workspace} />
+        <GeneralSettings workspace={workspace} pdv={pdv} />
       </TabsContent>
 
       <TabsContent value="usuarios" className="mt-5">

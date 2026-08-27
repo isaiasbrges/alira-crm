@@ -81,6 +81,8 @@ model Store {
   ativa          Boolean @default(true)
   /// Logo da loja. Guarda um data URI (upload direto, sem storage externo) ou uma URL.
   logoUrl        String? @db.LongText
+  /// Hash da senha que trava a abertura do PDV desta loja. Nulo = PDV não pede senha.
+  pdvSenhaHash   String? @db.VarChar(255)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,9 +1,24 @@
+import { Lock } from "lucide-react";
+
 import type { Workspace } from "@/types/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PdvPasswordForm } from "@/components/settings/pdv-password-form";
 import { StoreLogoForm } from "@/components/settings/store-logo-form";
 
-export function GeneralSettings({ workspace }: { workspace: Workspace }) {
+type PdvConfig = {
+  storeId: string;
+  temSenha: boolean;
+  podeGerenciar: boolean;
+};
+
+export function GeneralSettings({
+  workspace,
+  pdv,
+}: {
+  workspace: Workspace;
+  pdv: PdvConfig;
+}) {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -39,6 +54,30 @@ export function GeneralSettings({ workspace }: { workspace: Workspace }) {
             storeNome={workspace.store.nome}
             logoUrl={workspace.store.logoUrl}
           />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+          <Lock className="size-3.5" />
+          Senha do PDV — {workspace.store.nome}
+        </h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Pedida ao abrir o PDV desta loja. Útil em terminal/dispositivo
+          compartilhado por mais de um vendedor.
+        </p>
+
+        <div className="mt-4">
+          {pdv.podeGerenciar ? (
+            <PdvPasswordForm storeId={pdv.storeId} temSenha={pdv.temSenha} />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {pdv.temSenha
+                ? "O PDV desta loja está protegido por senha."
+                : "O PDV desta loja não pede senha."}{" "}
+              Só donos e gerentes podem alterar.
+            </p>
+          )}
         </div>
       </div>
 
