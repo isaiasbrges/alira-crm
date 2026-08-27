@@ -1,6 +1,7 @@
 import type { Workspace } from "@/types/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StoreLogoForm } from "@/components/settings/store-logo-form";
 
 export function GeneralSettings({ workspace }: { workspace: Workspace }) {
   return (
@@ -14,7 +15,11 @@ export function GeneralSettings({ workspace }: { workspace: Workspace }) {
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="org-nome">Nome</Label>
-            <Input id="org-nome" defaultValue={workspace.organization.nome} disabled />
+            <Input
+              id="org-nome"
+              defaultValue={workspace.organization.nome}
+              disabled
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="org-loja">Loja ativa</Label>
@@ -24,10 +29,24 @@ export function GeneralSettings({ workspace }: { workspace: Workspace }) {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6">
+        <h2 className="text-sm font-semibold">Logo da loja ativa</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Aparece no seletor de loja, na sidebar.
+        </p>
+
+        <div className="mt-4">
+          <StoreLogoForm
+            storeNome={workspace.store.nome}
+            logoUrl={workspace.store.logoUrl}
+          />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-6">
         <h2 className="text-sm font-semibold">Lojas</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {workspace.stores.length} loja{workspace.stores.length === 1 ? "" : "s"} nesta
-          organização.
+          {workspace.stores.length} loja
+          {workspace.stores.length === 1 ? "" : "s"} nesta organização.
         </p>
 
         <ul className="mt-4 space-y-2">

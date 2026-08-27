@@ -22,6 +22,7 @@ export type NavSection = {
 export type Store = {
   id: string;
   nome: string;
+  logoUrl: string | null;
 };
 
 export type Organization = {

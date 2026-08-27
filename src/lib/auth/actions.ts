@@ -189,3 +189,55 @@ export async function criarLojaAction(
 
   return {};
 }
+
+const TIPOS_LOGO_ACEITOS = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/svg+xml",
+]);
+const TAMANHO_MAXIMO_LOGO = 1.5 * 1024 * 1024; // 1,5 MB
+
+export type AtualizarLogoState = {
+  erro?: string;
+};
+
+/**
+ * Salva a logo de uma loja como data URI direto na coluna `logoUrl`.
+ *
+ * Sem storage externo por ora: o arquivo cabe fácil no limite de 1,5 MB e o
+ * `LONGTEXT` do banco aguenta de sobra. Se o volume de lojas crescer a ponto
+ * de pesar, aí sim vale trocar por um bucket — não antes.
+ */
+export async function atualizarLogoLojaAction(
+  _prevState: AtualizarLogoState,
+  formData: FormData,
+): Promise<AtualizarLogoState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const arquivo = formData.get("logo");
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    return { erro: "Selecione uma imagem." };
+  }
+
+  if (!TIPOS_LOGO_ACEITOS.has(arquivo.type)) {
+    return { erro: "Formato não suportado. Use PNG, JPG, WEBP ou SVG." };
+  }
+
+  if (arquivo.size > TAMANHO_MAXIMO_LOGO) {
+    return { erro: "Imagem muito grande. O limite é 1,5 MB." };
+  }
+
+  const storeId = String(formData.get("storeId") ?? session.activeStoreId);
+  const buffer = Buffer.from(await arquivo.arrayBuffer());
+  const logoUrl = `data:${arquivo.type};base64,${buffer.toString("base64")}`;
+
+  const db = await getTenantDb();
+  await db.store.update({
+    where: { id: storeId },
+    data: { logoUrl },
+  });
+
+  return {};
+}

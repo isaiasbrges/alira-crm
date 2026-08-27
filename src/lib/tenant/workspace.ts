@@ -35,12 +35,20 @@ export async function carregarWorkspace(): Promise<{
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const stores = session.stores.map((store) => ({ id: store.id, nome: store.nome }));
-  const ativa = stores.find((store) => store.id === session.activeStoreId) ?? stores[0];
+  const stores = session.stores.map((store) => ({
+    id: store.id,
+    nome: store.nome,
+    logoUrl: store.logoUrl,
+  }));
+  const ativa =
+    stores.find((store) => store.id === session.activeStoreId) ?? stores[0];
 
   return {
     workspace: {
-      organization: { id: session.organization.id, nome: session.organization.nome },
+      organization: {
+        id: session.organization.id,
+        nome: session.organization.nome,
+      },
       store: ativa,
       stores,
     },

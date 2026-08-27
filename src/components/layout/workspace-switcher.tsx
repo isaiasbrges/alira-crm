@@ -58,9 +58,20 @@ export function WorkspaceSwitcher({
             collapsed ? "size-10 w-full justify-center" : "h-14 w-full px-3",
           )}
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 text-xs font-semibold text-white">
-            {iniciais(organization.nome)}
-          </span>
+          {store.logoUrl ? (
+            // Data URI ou URL arbitrária de upload — sem domínio fixo para o
+            // otimizador do next/image configurar.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={store.logoUrl}
+              alt={store.nome}
+              className="size-9 shrink-0 rounded-lg object-cover"
+            />
+          ) : (
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 text-xs font-semibold text-white">
+              {iniciais(organization.nome)}
+            </span>
+          )}
 
           {!collapsed && (
             <>
@@ -87,7 +98,16 @@ export function WorkspaceSwitcher({
               disabled={pending}
               onClick={() => selecionarLoja(item.id)}
             >
-              <StoreIcon className="size-4" />
+              {item.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.logoUrl}
+                  alt={item.nome}
+                  className="size-4 shrink-0 rounded-sm object-cover"
+                />
+              ) : (
+                <StoreIcon className="size-4" />
+              )}
               <span className="flex-1 truncate">{item.nome}</span>
               {item.id === store.id && <Check className="size-4" />}
             </DropdownMenuItem>

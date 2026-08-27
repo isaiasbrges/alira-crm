@@ -27,15 +27,15 @@ enum OrganizationStatus {
 }
 
 model Organization {
-  id        String             @id @default(cuid())
-  nome      String
-  slug      String             @unique
-  status    OrganizationStatus @default(ATIVA)
+  id      String             @id @default(cuid())
+  nome    String
+  slug    String             @unique
+  status  OrganizationStatus @default(ATIVA)
   /// Rótulo do plano contratado. Sem cobrança associada: existe para o painel
   /// master exibir e segmentar; billing é decisão de outra fase.
-  plano     String?
+  plano   String?
   /// Marca a organização interna do time Alira, dona dos SUPER_ADMIN.
-  interna   Boolean            @default(false)
+  interna Boolean            @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -72,6 +72,8 @@ model Store {
   nome           String
   slug           String
   ativa          Boolean @default(true)
+  /// Logo da loja. Guarda um data URI (upload direto, sem storage externo) ou uma URL.
+  logoUrl        String? @db.LongText
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -217,7 +219,7 @@ model CustomerPreference {
   tamanhoCalca    String?
   tamanhoCalcado  String?
 
-  estilo String?
+  estilo              String?
   // Listas curtas de texto livre; JSON evita tabelas auxiliares no MVP.
   cores               Json?
   marcas              Json?
@@ -560,9 +562,9 @@ model Campaign {
   storeId        String
   segmentId      String?
 
-  nome         String
-  status       CampaignStatus @default(RASCUNHO)
-  templateNome String?
+  nome           String
+  status         CampaignStatus @default(RASCUNHO)
+  templateNome   String?
   /// Cópia das regras no momento do disparo. Preserva o histórico mesmo que o
   /// segmento de origem seja editado depois.
   segmentoRegras Json?
@@ -634,7 +636,7 @@ model WhatsappMessage {
   campaignId     String?
   recipientId    String?
 
-  direction MessageDirection
+  direction  MessageDirection
   // ID da mensagem na Meta Cloud API, usado para casar webhooks de status.
   externalId String?          @unique
   template   String?
