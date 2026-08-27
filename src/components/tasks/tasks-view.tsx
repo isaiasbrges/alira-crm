@@ -1,13 +1,18 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { ClipboardCheck, Search } from "lucide-react";
 
 import { formatNumber } from "@/lib/format";
 import type { Task, TaskFilters } from "@/types/task";
 import { TASK_FILTERS_DEFAULT } from "@/types/task";
-import { MOCK_TASKS } from "@/mocks/tasks";
-import { buildTaskKpis, filterTasks, ordenarTarefas } from "@/services/task-metrics";
+import {
+  buildTaskKpis,
+  filterTasks,
+  ordenarTarefas,
+} from "@/services/task-metrics";
+import { alternarTarefaAction } from "@/app/(crm)/tarefas/actions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
@@ -15,41 +20,60 @@ import { NewTaskDialog } from "@/components/tasks/new-task-dialog";
 import { TaskFiltersBar } from "@/components/tasks/task-filters";
 import { TaskList } from "@/components/tasks/task-list";
 
-export function TasksView() {
-  const [tasks, setTasks] = React.useState<Task[]>(MOCK_TASKS);
-  const [filters, setFilters] = React.useState<TaskFilters>(TASK_FILTERS_DEFAULT);
+type TasksViewProps = {
+  tarefas: Task[];
+  vendedores: { id: string; nome: string }[];
+  clientes: { id: string; nome: string }[];
+};
 
-  const kpis = React.useMemo(() => buildTaskKpis(tasks), [tasks]);
+export function TasksView({ tarefas, vendedores, clientes }: TasksViewProps) {
+  const router = useRouter();
+  const [filters, setFilters] =
+    React.useState<TaskFilters>(TASK_FILTERS_DEFAULT);
+  const [, startTransition] = React.useTransition();
+
+  const kpis = React.useMemo(() => buildTaskKpis(tarefas), [tarefas]);
   const visiveis = React.useMemo(
-    () => ordenarTarefas(filterTasks(tasks, filters)),
-    [tasks, filters]
+    () => ordenarTarefas(filterTasks(tarefas, filters)),
+    [tarefas, filters],
   );
 
-  function updateFilter<K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) {
+  function updateFilter<K extends keyof TaskFilters>(
+    key: K,
+    value: TaskFilters[K],
+  ) {
     setFilters((current) => ({ ...current, [key]: value }));
   }
 
   function alternarConclusao(id: string) {
-    setTasks((atual) =>
-      atual.map((tarefa) =>
-        tarefa.id === id
-          ? { ...tarefa, status: tarefa.status === "concluida" ? "pendente" : "concluida" }
-          : tarefa
-      )
-    );
+    startTransition(async () => {
+      await alternarTarefaAction(id);
+      router.refresh();
+    });
   }
 
   return (
     <>
       <PageHeader titulo="Tarefas" descricao="Agenda da equipe de vendas.">
-        <NewTaskDialog onCreate={(tarefa) => setTasks((atual) => [tarefa, ...atual])} />
+        <NewTaskDialog vendedores={vendedores} clientes={clientes} />
       </PageHeader>
 
-      <section aria-label="Indicadores de tarefas" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section
+        aria-label="Indicadores de tarefas"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+      >
         <SummaryCard label="Total" value={kpis.total} />
         <SummaryCard label="Pendentes" value={kpis.pendentes} />
-        <SummaryCard label="Atrasadas" value={kpis.atrasadas} tone="destructive" />
-        <SummaryCard label="Concluídas" value={kpis.concluidas} tone="success" />
+        <SummaryCard
+          label="Atrasadas"
+          value={kpis.atrasadas}
+          tone="destructive"
+        />
+        <SummaryCard
+          label="Concluídas"
+          value={kpis.concluidas}
+          tone="success"
+        />
       </section>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -66,7 +90,11 @@ export function TasksView() {
       </div>
 
       <div className="mt-3">
-        <TaskFiltersBar filters={filters} onChange={updateFilter} />
+        <TaskFiltersBar
+          filters={filters}
+          onChange={updateFilter}
+          vendedores={vendedores}
+        />
       </div>
 
       <Card className="mt-4 gap-0 overflow-hidden py-0">
@@ -116,7 +144,9 @@ function EmptyState() {
       </span>
       <div>
         <p className="text-sm font-medium">Nenhuma tarefa encontrada</p>
-        <p className="mt-1 text-sm text-muted-foreground">Ajuste os filtros para ampliar a busca.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Ajuste os filtros para ampliar a busca.
+        </p>
       </div>
     </div>
   );

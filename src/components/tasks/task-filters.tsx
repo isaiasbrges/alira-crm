@@ -1,5 +1,4 @@
 import type { TaskFilters } from "@/types/task";
-import { MOCK_VENDEDORES } from "@/mocks/customers";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -11,10 +10,20 @@ import {
 
 type TaskFiltersBarProps = {
   filters: TaskFilters;
-  onChange: <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => void;
+  onChange: <K extends keyof TaskFilters>(
+    key: K,
+    value: TaskFilters[K],
+  ) => void;
+  vendedores: { id: string; nome: string }[];
 };
 
-function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+function FilterField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-w-36 flex-1">
       <Label className="mb-1.5 text-xs text-muted-foreground">{label}</Label>
@@ -23,17 +32,24 @@ function FilterField({ label, children }: { label: string; children: React.React
   );
 }
 
-export function TaskFiltersBar({ filters, onChange }: TaskFiltersBarProps) {
+export function TaskFiltersBar({
+  filters,
+  onChange,
+  vendedores,
+}: TaskFiltersBarProps) {
   return (
     <div className="flex flex-wrap gap-3 rounded-2xl border border-border bg-card p-4">
       <FilterField label="Vendedor">
-        <Select value={filters.vendedor} onValueChange={(value) => onChange("vendedor", value)}>
+        <Select
+          value={filters.vendedor}
+          onValueChange={(value) => onChange("vendedor", value)}
+        >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos</SelectItem>
-            {MOCK_VENDEDORES.map((vendedor) => (
+            {vendedores.map((vendedor) => (
               <SelectItem key={vendedor.id} value={vendedor.id}>
                 {vendedor.nome}
               </SelectItem>
@@ -45,7 +61,9 @@ export function TaskFiltersBar({ filters, onChange }: TaskFiltersBarProps) {
       <FilterField label="Prioridade">
         <Select
           value={filters.prioridade}
-          onValueChange={(value) => onChange("prioridade", value as TaskFilters["prioridade"])}
+          onValueChange={(value) =>
+            onChange("prioridade", value as TaskFilters["prioridade"])
+          }
         >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
@@ -62,7 +80,9 @@ export function TaskFiltersBar({ filters, onChange }: TaskFiltersBarProps) {
       <FilterField label="Status">
         <Select
           value={filters.status}
-          onValueChange={(value) => onChange("status", value as TaskFilters["status"])}
+          onValueChange={(value) =>
+            onChange("status", value as TaskFilters["status"])
+          }
         >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
