@@ -8,6 +8,7 @@ import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from "@/lib/auth/cookie";
 import { verificarSenha } from "@/lib/auth/password";
 import { getSession } from "@/lib/auth/session";
 import { assinarSessionToken } from "@/lib/auth/session-token";
+import { getTenantDb } from "@/lib/tenant/db";
 
 export type LoginState = {
   erro?: string;
@@ -23,7 +24,7 @@ export type LoginState = {
  */
 export async function loginAction(
   _prevState: LoginState,
-  formData: FormData
+  formData: FormData,
 ): Promise<LoginState> {
   const email = String(formData.get("email") ?? "")
     .trim()
@@ -64,7 +65,9 @@ export async function loginAction(
   });
 
   if (!primeiraLoja) {
-    return { erro: "Nenhuma loja ativa nesta organização. Fale com o suporte." };
+    return {
+      erro: "Nenhuma loja ativa nesta organização. Fale com o suporte.",
+    };
   }
 
   const activeStoreId = user.ultimaStoreId ?? primeiraLoja.id;
@@ -113,4 +116,76 @@ export async function trocarLojaAction(storeId: string): Promise<void> {
 
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+}
+
+function gerarSlug(nome: string): string {
+  return (
+    nome
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "loja"
+  );
+}
+
+export type CriarLojaState = {
+  erro?: string;
+};
+
+/**
+ * Cria uma loja na organização da sessão e a torna a loja ativa.
+ *
+ * O slug nasce do nome e ganha um sufixo numérico se colidir com uma loja
+ * existente na mesma organização — a unicidade é por organização
+ * (`@@unique([organizationId, slug])`), não global.
+ */
+export async function criarLojaAction(
+  _prevState: CriarLojaState,
+  formData: FormData,
+): Promise<CriarLojaState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const nome = String(formData.get("nome") ?? "").trim();
+  if (!nome) return { erro: "Informe o nome da loja." };
+  if (nome.length > 80) return { erro: "Nome muito longo." };
+
+  const db = await getTenantDb();
+  const slugBase = gerarSlug(nome);
+
+  const existentes = await db.store.findMany({
+    where: { slug: { startsWith: slugBase } },
+    select: { slug: true },
+  });
+  const slugsExistentes = new Set(existentes.map((loja) => loja.slug));
+
+  let slug = slugBase;
+  let sufixo = 2;
+  while (slugsExistentes.has(slug)) {
+    slug = `${slugBase}-${sufixo}`;
+    sufixo += 1;
+  }
+
+  const novaLoja = await db.store.create({
+    data: { organizationId: session.organization.id, nome, slug },
+    select: { id: true },
+  });
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { ultimaStoreId: novaLoja.id },
+  });
+
+  const token = await assinarSessionToken({
+    userId: session.user.id,
+    organizationId: session.organization.id,
+    activeStoreId: novaLoja.id,
+  });
+
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+
+  return {};
 }

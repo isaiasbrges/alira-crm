@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Store as StoreIcon } from "lucide-react";
+import { Check, ChevronDown, Plus, Store as StoreIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { trocarLojaAction } from "@/lib/auth/actions";
 import type { Workspace } from "@/types/navigation";
+import { AddStoreDialog } from "@/components/layout/add-store-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,10 +31,14 @@ function iniciais(nome: string): string {
     .join("");
 }
 
-export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({
+  workspace,
+  collapsed,
+}: WorkspaceSwitcherProps) {
   const { organization, store, stores } = workspace;
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
+  const [addStoreOpen, setAddStoreOpen] = React.useState(false);
 
   function selecionarLoja(storeId: string) {
     if (storeId === store.id) return;
@@ -44,53 +49,64 @@ export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherPro
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label="Trocar de loja"
-        className={cn(
-          "flex items-center gap-3 rounded-xl bg-white/[0.06] text-left transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-          collapsed ? "size-10 w-full justify-center" : "h-14 w-full px-3"
-        )}
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 text-xs font-semibold text-white">
-          {iniciais(organization.nome)}
-        </span>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label="Trocar de loja"
+          className={cn(
+            "flex items-center gap-3 rounded-xl bg-white/[0.06] text-left transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+            collapsed ? "size-10 w-full justify-center" : "h-14 w-full px-3",
+          )}
+        >
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 text-xs font-semibold text-white">
+            {iniciais(organization.nome)}
+          </span>
 
-        {!collapsed && (
-          <>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-sidebar-foreground">
-                {organization.nome}
+          {!collapsed && (
+            <>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-sidebar-foreground">
+                  {organization.nome}
+                </span>
+                <span className="block truncate text-[11px] text-sidebar-muted">
+                  {store.nome}
+                </span>
               </span>
-              <span className="block truncate text-[11px] text-sidebar-muted">
-                {store.nome}
-              </span>
-            </span>
-            <ChevronDown className="size-4 shrink-0 text-sidebar-muted" />
-          </>
-        )}
-      </DropdownMenuTrigger>
+              <ChevronDown className="size-4 shrink-0 text-sidebar-muted" />
+            </>
+          )}
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="w-60">
-        <DropdownMenuLabel>{organization.nome}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {stores.map((item) => (
+        <DropdownMenuContent align="start" className="w-60">
+          <DropdownMenuLabel>{organization.nome}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {stores.map((item) => (
+            <DropdownMenuItem
+              key={item.id}
+              className="gap-2"
+              disabled={pending}
+              onClick={() => selecionarLoja(item.id)}
+            >
+              <StoreIcon className="size-4" />
+              <span className="flex-1 truncate">{item.nome}</span>
+              {item.id === store.id && <Check className="size-4" />}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
           <DropdownMenuItem
-            key={item.id}
             className="gap-2"
-            disabled={pending}
-            onClick={() => selecionarLoja(item.id)}
+            onSelect={(event) => {
+              event.preventDefault();
+              setAddStoreOpen(true);
+            }}
           >
-            <StoreIcon className="size-4" />
-            <span className="flex-1 truncate">{item.nome}</span>
-            {item.id === store.id && <Check className="size-4" />}
+            <Plus className="size-4" />
+            Adicionar loja
           </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled className="text-xs">
-          Adicionar loja — em breve
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AddStoreDialog open={addStoreOpen} onOpenChange={setAddStoreOpen} />
+    </>
   );
 }
