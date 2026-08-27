@@ -1,16 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Plus, UsersRound } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, Plus, UsersRound } from "lucide-react";
 
-import { MOCK_CUSTOMERS } from "@/mocks/customers";
-import { MOCK_SEGMENTS } from "@/mocks/segments";
-import { MOCK_TEMPLATES } from "@/mocks/campaigns";
+import type { Customer } from "@/types/customer";
+import type { Segment } from "@/types/segment";
+import { criarCampanhaAction } from "@/app/(crm)/campanhas/actions";
 import { contarClientesDoSegmento } from "@/services/segment-engine";
-import type { Campaign } from "@/types/campaign";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -28,23 +29,45 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export function NewCampaignDialog({ onCreate }: { onCreate: (campanha: Campaign) => void }) {
+const SUGESTOES_TEMPLATE = [
+  "Pré-lançamento de coleção",
+  "Reativação — desconto de retorno",
+  "Aniversário do mês",
+  "Confirmação de pedido",
+  "Convite para evento na loja",
+];
+
+type NewCampaignDialogProps = {
+  segmentos: Segment[];
+  clientes: Customer[];
+};
+
+export function NewCampaignDialog({
+  segmentos,
+  clientes,
+}: NewCampaignDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [nome, setNome] = React.useState("");
-  const [segmentoId, setSegmentoId] = React.useState(MOCK_SEGMENTS[0]?.id ?? "");
-  const [templateNome, setTemplateNome] = React.useState(MOCK_TEMPLATES[0]);
+  const [segmentoId, setSegmentoId] = React.useState(segmentos[0]?.id ?? "");
+  const [templateNome, setTemplateNome] = React.useState("");
   const [agendadaPara, setAgendadaPara] = React.useState("");
+  const [pendente, setPendente] = React.useState(false);
+  const [erro, setErro] = React.useState<string | undefined>();
 
-  const segmento = MOCK_SEGMENTS.find((item) => item.id === segmentoId);
+  const segmento = segmentos.find((item) => item.id === segmentoId);
   // Mesmo motor do construtor de Segmentos — a contagem que aparece aqui é a
   // que a campanha de fato alcançaria.
-  const destinatarios = segmento ? contarClientesDoSegmento(MOCK_CUSTOMERS, segmento) : 0;
+  const destinatarios = segmento
+    ? contarClientesDoSegmento(clientes, segmento)
+    : 0;
 
   function limpar() {
     setNome("");
-    setSegmentoId(MOCK_SEGMENTS[0]?.id ?? "");
-    setTemplateNome(MOCK_TEMPLATES[0]);
+    setSegmentoId(segmentos[0]?.id ?? "");
+    setTemplateNome("");
     setAgendadaPara("");
+    setErro(undefined);
   }
 
   function alternarAbertura(next: boolean) {
@@ -52,22 +75,25 @@ export function NewCampaignDialog({ onCreate }: { onCreate: (campanha: Campaign)
     if (!next) limpar();
   }
 
-  function submeter(event: React.FormEvent) {
+  async function submeter(event: React.FormEvent) {
     event.preventDefault();
-    if (!nome.trim() || !segmento) return;
+    if (!nome.trim() || !segmento || pendente) return;
 
-    onCreate({
-      id: `camp-${Date.now()}`,
+    setPendente(true);
+    const resultado = await criarCampanhaAction({
       nome: nome.trim(),
-      status: agendadaPara ? "agendada" : "rascunho",
       segmentoId: segmento.id,
-      segmentoNome: segmento.nome,
-      templateNome,
-      destinatarios,
-      agendadaPara: agendadaPara ? new Date(agendadaPara).toISOString() : undefined,
+      templateNome: templateNome.trim(),
+      agendadaPara: agendadaPara || null,
     });
+    setPendente(false);
 
-    alternarAbertura(false);
+    if (resultado.campanha) {
+      alternarAbertura(false);
+      router.refresh();
+    } else {
+      setErro(resultado.erro ?? "Não foi possível criar a campanha.");
+    }
   }
 
   return (
@@ -84,12 +110,19 @@ export function NewCampaignDialog({ onCreate }: { onCreate: (campanha: Campaign)
           <DialogHeader>
             <DialogTitle>Nova campanha</DialogTitle>
             <DialogDescription>
-              O disparo pela WhatsApp Cloud API entra em uma etapa futura — por ora a campanha
-              fica agendada ou em rascunho.
+              O disparo pela WhatsApp Cloud API entra em uma etapa futura — por
+              ora a campanha fica agendada ou em rascunho.
             </DialogDescription>
           </DialogHeader>
 
           <div className="mt-4 space-y-4">
+            {erro && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+                <AlertCircle className="size-4 shrink-0" />
+                {erro}
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="campanha-nome">Nome</Label>
               <Input
@@ -101,36 +134,44 @@ export function NewCampaignDialog({ onCreate }: { onCreate: (campanha: Campaign)
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Segmento</Label>
-              <Select value={segmentoId} onValueChange={setSegmentoId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecione um segmento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MOCK_SEGMENTS.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {segmentos.length > 0 ? (
+              <div className="space-y-1.5">
+                <Label>Segmento</Label>
+                <Select value={segmentoId} onValueChange={setSegmentoId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um segmento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {segmentos.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Nenhum segmento criado ainda — crie um em Segmentos antes de
+                lançar uma campanha.
+              </p>
+            )}
 
             <div className="space-y-1.5">
-              <Label>Template</Label>
-              <Select value={templateNome} onValueChange={setTemplateNome}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MOCK_TEMPLATES.map((template) => (
-                    <SelectItem key={template} value={template}>
-                      {template}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="campanha-template">Template</Label>
+              <Input
+                id="campanha-template"
+                name="templateNome"
+                list="templates-sugeridos"
+                value={templateNome}
+                onChange={(event) => setTemplateNome(event.target.value)}
+                placeholder="Ex.: Pré-lançamento de coleção"
+              />
+              <datalist id="templates-sugeridos">
+                {SUGESTOES_TEMPLATE.map((template) => (
+                  <option key={template} value={template} />
+                ))}
+              </datalist>
             </div>
 
             <div className="space-y-1.5">
@@ -141,7 +182,9 @@ export function NewCampaignDialog({ onCreate }: { onCreate: (campanha: Campaign)
                 value={agendadaPara}
                 onChange={(event) => setAgendadaPara(event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Vazio salva como rascunho.</p>
+              <p className="text-xs text-muted-foreground">
+                Vazio salva como rascunho.
+              </p>
             </div>
 
             <div className="flex items-center gap-2.5 rounded-xl border border-border bg-secondary/50 px-4 py-3">
@@ -152,17 +195,21 @@ export function NewCampaignDialog({ onCreate }: { onCreate: (campanha: Campaign)
                 <div className="text-sm font-semibold">
                   {destinatarios} destinatário{destinatarios === 1 ? "" : "s"}
                 </div>
-                <div className="text-xs text-muted-foreground">segundo o segmento escolhido</div>
+                <div className="text-xs text-muted-foreground">
+                  segundo o segmento escolhido
+                </div>
               </div>
             </div>
           </div>
 
           <DialogFooter className="mt-6">
-            <Button type="button" variant="outline" onClick={() => alternarAbertura(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={!segmento}>
-              Salvar campanha
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button type="submit" disabled={!segmento || pendente}>
+              {pendente ? "Salvando..." : "Salvar campanha"}
             </Button>
           </DialogFooter>
         </form>
