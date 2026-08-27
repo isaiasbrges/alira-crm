@@ -4,17 +4,18 @@ import * as React from "react";
 
 import type { Product } from "@/types/product";
 import type { PaymentMethod, Sale } from "@/types/sale";
-import { MOCK_CUSTOMERS, MOCK_VENDEDORES } from "@/mocks/customers";
-import { MOCK_SALES } from "@/mocks/sales";
+import { finalizarVendaAction } from "@/app/(crm)/vendas/pdv/actions";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { CartList } from "@/components/sales/pdv/cart-list";
-import { CheckoutPanel, CLIENTE_BALCAO } from "@/components/sales/pdv/checkout-panel";
+import {
+  CheckoutPanel,
+  CLIENTE_BALCAO,
+} from "@/components/sales/pdv/checkout-panel";
 import { ProductPicker } from "@/components/sales/pdv/product-picker";
 import { SaleSuccess } from "@/components/sales/pdv/sale-success";
 import type { CartItem } from "@/components/sales/pdv/types";
 import { VariantPickerDialog } from "@/components/sales/pdv/variant-picker-dialog";
-import { VENDA_RECENTE_KEY } from "@/components/sales/sales-view";
 
 function estadoInicial() {
   return {
@@ -28,17 +29,30 @@ function estadoInicial() {
   };
 }
 
-export function PdvView() {
+type PdvViewProps = {
+  produtos: Product[];
+  clientes: { id: string; nome: string }[];
+  vendedores: { id: string; nome: string }[];
+};
+
+export function PdvView({ produtos, clientes, vendedores }: PdvViewProps) {
   const [estado, setEstado] = React.useState(estadoInicial);
-  const [vendaFinalizada, setVendaFinalizada] = React.useState<Sale | null>(null);
+  const [vendaFinalizada, setVendaFinalizada] = React.useState<Sale | null>(
+    null,
+  );
+  const [pendente, setPendente] = React.useState(false);
+  const [erro, setErro] = React.useState<string | undefined>();
 
   const subtotal = estado.itens.reduce(
     (soma, item) => soma + item.precoUnitario * item.quantidade,
-    0
+    0,
   );
   const descontoNumero = Number(estado.desconto.replace(",", ".")) || 0;
   const total = Math.max(0, subtotal - descontoNumero);
-  const podeFinalizarar = estado.itens.length > 0 && Boolean(estado.vendedorId) && Boolean(estado.formaPagamento);
+  const podeFinalizarar =
+    estado.itens.length > 0 &&
+    Boolean(estado.vendedorId) &&
+    Boolean(estado.formaPagamento);
 
   function adicionarAoCarrinho(item: CartItem) {
     setEstado((atual) => {
@@ -47,12 +61,12 @@ export function PdvView() {
 
       const quantidade = Math.min(
         existente.estoqueDisponivel,
-        existente.quantidade + item.quantidade
+        existente.quantidade + item.quantidade,
       );
       return {
         ...atual,
         itens: atual.itens.map((i) =>
-          i.variantId === item.variantId ? { ...i, quantidade } : i
+          i.variantId === item.variantId ? { ...i, quantidade } : i,
         ),
       };
     });
@@ -73,74 +87,76 @@ export function PdvView() {
           ? atual.itens.filter((item) => item.variantId !== variantId)
           : atual.itens.map((item) =>
               item.variantId === variantId
-                ? { ...item, quantidade: Math.min(quantidade, item.estoqueDisponivel) }
-                : item
+                ? {
+                    ...item,
+                    quantidade: Math.min(quantidade, item.estoqueDisponivel),
+                  }
+                : item,
             ),
     }));
   }
 
-  function finalizarVenda() {
-    if (!podeFinalizarar || !estado.formaPagamento) return;
+  async function finalizarVenda() {
+    if (!podeFinalizarar || !estado.formaPagamento || pendente) return;
 
-    const cliente = MOCK_CUSTOMERS.find((item) => item.id === estado.clienteId);
-    const vendedor = MOCK_VENDEDORES.find((item) => item.id === estado.vendedorId);
-    const proximoNumero = Math.max(...MOCK_SALES.map((venda) => venda.numero)) + 1;
+    setPendente(true);
+    setErro(undefined);
 
-    const venda: Sale = {
-      id: `sale-${Date.now()}`,
-      numero: proximoNumero,
-      clienteId: cliente?.id,
-      clienteNome: cliente?.nome ?? "Cliente balcão",
+    const resultado = await finalizarVendaAction({
+      clienteId: estado.clienteId === CLIENTE_BALCAO ? null : estado.clienteId,
       vendedorId: estado.vendedorId,
-      vendedorNome: vendedor?.nome ?? "",
       itens: estado.itens.map((item) => ({
         variantId: item.variantId,
-        produtoNome: item.produtoNome,
-        tamanho: item.tamanho,
-        cor: item.cor,
         quantidade: item.quantidade,
         precoUnitario: item.precoUnitario,
-        total: item.precoUnitario * item.quantidade,
       })),
-      subtotal,
       desconto: descontoNumero,
-      total,
       formaPagamento: estado.formaPagamento,
-      status: "concluida",
-      observacao: estado.observacao.trim() || undefined,
-      concluidaEm: new Date().toISOString(),
-    };
+      observacao: estado.observacao.trim() || null,
+    });
 
-    try {
-      sessionStorage.setItem(VENDA_RECENTE_KEY, JSON.stringify(venda));
-    } catch {
-      // sessionStorage indisponível: a venda ainda aparece na tela de sucesso,
-      // só não chega pré-carregada em /vendas.
+    setPendente(false);
+
+    if (resultado.erro || !resultado.venda) {
+      setErro(resultado.erro ?? "Não foi possível finalizar a venda.");
+      return;
     }
 
-    setVendaFinalizada(venda);
+    setVendaFinalizada(resultado.venda);
   }
 
   if (vendaFinalizada) {
     return (
       <>
-        <PageHeader titulo="PDV Lite" descricao="Registro rápido de vendas no balcão." />
-        <SaleSuccess venda={vendaFinalizada} onNovaVenda={() => {
-          setEstado(estadoInicial());
-          setVendaFinalizada(null);
-        }} />
+        <PageHeader
+          titulo="PDV Lite"
+          descricao="Registro rápido de vendas no balcão."
+        />
+        <SaleSuccess
+          venda={vendaFinalizada}
+          onNovaVenda={() => {
+            setEstado(estadoInicial());
+            setVendaFinalizada(null);
+          }}
+        />
       </>
     );
   }
 
   return (
     <>
-      <PageHeader titulo="PDV Lite" descricao="Registro rápido de vendas no balcão." />
+      <PageHeader
+        titulo="PDV Lite"
+        descricao="Registro rápido de vendas no balcão."
+      />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <Card className="min-h-[560px] p-4">
           <ProductPicker
-            onSelect={(produto) => setEstado((atual) => ({ ...atual, produtoEmEscolha: produto }))}
+            produtos={produtos}
+            onSelect={(produto) =>
+              setEstado((atual) => ({ ...atual, produtoEmEscolha: produto }))
+            }
           />
         </Card>
 
@@ -158,12 +174,20 @@ export function PdvView() {
 
           <Card className="p-4">
             <CheckoutPanel
+              clientes={clientes}
+              vendedores={vendedores}
               clienteId={estado.clienteId}
-              onClienteChange={(clienteId) => setEstado((atual) => ({ ...atual, clienteId }))}
+              onClienteChange={(clienteId) =>
+                setEstado((atual) => ({ ...atual, clienteId }))
+              }
               vendedorId={estado.vendedorId}
-              onVendedorChange={(vendedorId) => setEstado((atual) => ({ ...atual, vendedorId }))}
+              onVendedorChange={(vendedorId) =>
+                setEstado((atual) => ({ ...atual, vendedorId }))
+              }
               desconto={estado.desconto}
-              onDescontoChange={(desconto) => setEstado((atual) => ({ ...atual, desconto }))}
+              onDescontoChange={(desconto) =>
+                setEstado((atual) => ({ ...atual, desconto }))
+              }
               formaPagamento={estado.formaPagamento}
               onFormaPagamentoChange={(formaPagamento) =>
                 setEstado((atual) => ({ ...atual, formaPagamento }))
@@ -176,6 +200,8 @@ export function PdvView() {
               total={total}
               podeFinalizarar={podeFinalizarar}
               onFinalizar={finalizarVenda}
+              pendente={pendente}
+              erro={erro}
             />
           </Card>
         </div>
@@ -183,7 +209,9 @@ export function PdvView() {
 
       <VariantPickerDialog
         produto={estado.produtoEmEscolha}
-        onClose={() => setEstado((atual) => ({ ...atual, produtoEmEscolha: null }))}
+        onClose={() =>
+          setEstado((atual) => ({ ...atual, produtoEmEscolha: null }))
+        }
         onAdd={adicionarAoCarrinho}
       />
     </>

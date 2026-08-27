@@ -1,6 +1,5 @@
 import { formatCurrency } from "@/lib/format";
 import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/types/sale";
-import { MOCK_CUSTOMERS, MOCK_VENDEDORES } from "@/mocks/customers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 const CLIENTE_BALCAO = "balcao";
 
 type CheckoutPanelProps = {
+  clientes: { id: string; nome: string }[];
+  vendedores: { id: string; nome: string }[];
   clienteId: string;
   onClienteChange: (id: string) => void;
   vendedorId: string;
@@ -30,9 +31,13 @@ type CheckoutPanelProps = {
   total: number;
   podeFinalizarar: boolean;
   onFinalizar: () => void;
+  pendente?: boolean;
+  erro?: string;
 };
 
 export function CheckoutPanel({
+  clientes,
+  vendedores,
   clienteId,
   onClienteChange,
   vendedorId,
@@ -47,6 +52,8 @@ export function CheckoutPanel({
   total,
   podeFinalizarar,
   onFinalizar,
+  pendente,
+  erro,
 }: CheckoutPanelProps) {
   return (
     <div className="flex h-full flex-col">
@@ -59,7 +66,7 @@ export function CheckoutPanel({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={CLIENTE_BALCAO}>Cliente balcão</SelectItem>
-              {MOCK_CUSTOMERS.map((cliente) => (
+              {clientes.map((cliente) => (
                 <SelectItem key={cliente.id} value={cliente.id}>
                   {cliente.nome}
                 </SelectItem>
@@ -75,7 +82,7 @@ export function CheckoutPanel({
               <SelectValue placeholder="Selecione o vendedor" />
             </SelectTrigger>
             <SelectContent>
-              {MOCK_VENDEDORES.map((vendedor) => (
+              {vendedores.map((vendedor) => (
                 <SelectItem key={vendedor.id} value={vendedor.id}>
                   {vendedor.nome}
                 </SelectItem>
@@ -100,7 +107,9 @@ export function CheckoutPanel({
             <Label>Pagamento</Label>
             <Select
               value={formaPagamento}
-              onValueChange={(value) => onFormaPagamentoChange(value as PaymentMethod)}
+              onValueChange={(value) =>
+                onFormaPagamentoChange(value as PaymentMethod)
+              }
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione" />
@@ -140,8 +149,19 @@ export function CheckoutPanel({
           </div>
         </div>
 
-        <Button className="w-full" size="lg" disabled={!podeFinalizarar} onClick={onFinalizar}>
-          Finalizar venda
+        {erro && (
+          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {erro}
+          </p>
+        )}
+
+        <Button
+          className="w-full"
+          size="lg"
+          disabled={!podeFinalizarar || pendente}
+          onClick={onFinalizar}
+        >
+          {pendente ? "Finalizando..." : "Finalizar venda"}
         </Button>
       </div>
     </div>

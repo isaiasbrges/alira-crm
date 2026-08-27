@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/format";
 import type { Product } from "@/types/product";
 import { estoqueTotal } from "@/types/product";
-import { MOCK_PRODUCTS } from "@/mocks/products";
 import { Input } from "@/components/ui/input";
 
 function normalizar(texto: string): string {
@@ -17,18 +16,26 @@ function normalizar(texto: string): string {
     .toLowerCase();
 }
 
-export function ProductPicker({ onSelect }: { onSelect: (produto: Product) => void }) {
+export function ProductPicker({
+  produtos,
+  onSelect,
+}: {
+  produtos: Product[];
+  onSelect: (produto: Product) => void;
+}) {
   const [busca, setBusca] = React.useState("");
 
   const resultados = React.useMemo(() => {
-    const disponiveis = MOCK_PRODUCTS.filter((produto) => produto.status === "ativo");
+    const disponiveis = produtos.filter(
+      (produto) => produto.status === "ativo",
+    );
     const termo = normalizar(busca.trim());
     if (!termo) return disponiveis;
 
     return disponiveis.filter((produto) =>
-      normalizar(`${produto.nome} ${produto.sku}`).includes(termo)
+      normalizar(`${produto.nome} ${produto.sku}`).includes(termo),
     );
-  }, [busca]);
+  }, [produtos, busca]);
 
   return (
     <div className="flex h-full flex-col">
@@ -48,7 +55,9 @@ export function ProductPicker({ onSelect }: { onSelect: (produto: Product) => vo
         {resultados.length === 0 && (
           <div className="col-span-full flex flex-col items-center justify-center gap-2 py-16 text-center">
             <PackageSearch className="size-8 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">Nenhum produto encontrado</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum produto encontrado
+            </p>
           </div>
         )}
 
@@ -64,12 +73,18 @@ export function ProductPicker({ onSelect }: { onSelect: (produto: Product) => vo
               onClick={() => onSelect(produto)}
               className={cn(
                 "flex flex-col items-start gap-1 rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:border-input",
-                esgotado && "cursor-not-allowed opacity-40"
+                esgotado && "cursor-not-allowed opacity-40",
               )}
             >
-              <span className="line-clamp-2 text-sm font-medium">{produto.nome}</span>
-              <span className="text-xs text-muted-foreground">{produto.sku}</span>
-              <span className="mt-1 text-sm font-semibold">{formatCurrency(produto.preco)}</span>
+              <span className="line-clamp-2 text-sm font-medium">
+                {produto.nome}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {produto.sku}
+              </span>
+              <span className="mt-1 text-sm font-semibold">
+                {formatCurrency(produto.preco)}
+              </span>
             </button>
           );
         })}
