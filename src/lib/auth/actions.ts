@@ -184,6 +184,8 @@ function gerarSlug(nome: string): string {
 
 export type CriarLojaState = {
   erro?: string;
+  /** Preenchido quando a loja é criada — o link de acesso é montado a partir daqui. */
+  novaLoja?: { id: string; nome: string };
 };
 
 /**
@@ -222,7 +224,7 @@ export async function criarLojaAction(
 
   const novaLoja = await db.store.create({
     data: { organizationId: session.organization.id, nome, slug },
-    select: { id: true },
+    select: { id: true, nome: true },
   });
 
   await prisma.user.update({
@@ -239,7 +241,7 @@ export async function criarLojaAction(
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
 
-  return {};
+  return { novaLoja };
 }
 
 const TIPOS_LOGO_ACEITOS = new Set([
