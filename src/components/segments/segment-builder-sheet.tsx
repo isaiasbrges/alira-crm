@@ -1,14 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Trash2, UsersRound } from "lucide-react";
 
-import { MOCK_CUSTOMERS } from "@/mocks/customers";
+import type { Customer } from "@/types/customer";
+import { criarSegmentoAction } from "@/app/(crm)/segmentos/actions";
 import { resolverSegmento } from "@/services/segment-engine";
 import {
   OPERATOR_LABEL,
   SEGMENT_FIELDS,
-  type Segment,
   type SegmentField,
   type SegmentLogic,
   type SegmentRule,
@@ -31,23 +32,39 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { RuleValueField } from "@/components/segments/rule-value-field";
+import {
+  RuleValueField,
+  type SegmentRuleOptions,
+} from "@/components/segments/rule-value-field";
 
 function novaRegra(): SegmentRule {
-  return { id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, campo: "status", operador: "igual", valor: "" };
+  return {
+    id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    campo: "status",
+    operador: "igual",
+    valor: "",
+  };
 }
 
 type SegmentBuilderSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (segment: Segment) => void;
+  clientes: Customer[];
+  opcoes: SegmentRuleOptions;
 };
 
-export function SegmentBuilderSheet({ open, onOpenChange, onSave }: SegmentBuilderSheetProps) {
+export function SegmentBuilderSheet({
+  open,
+  onOpenChange,
+  clientes,
+  opcoes,
+}: SegmentBuilderSheetProps) {
+  const router = useRouter();
   const [nome, setNome] = React.useState("");
   const [descricao, setDescricao] = React.useState("");
   const [logica, setLogica] = React.useState<SegmentLogic>("AND");
   const [regras, setRegras] = React.useState<SegmentRule[]>([novaRegra()]);
+  const [salvando, setSalvando] = React.useState(false);
 
   function limpar() {
     setNome("");
@@ -72,27 +89,31 @@ export function SegmentBuilderSheet({ open, onOpenChange, onSave }: SegmentBuild
           proxima.valor = "";
         }
         return proxima;
-      })
+      }),
     );
   }
 
   const previa = React.useMemo(
-    () => resolverSegmento(MOCK_CUSTOMERS, regras, logica),
-    [regras, logica]
+    () => resolverSegmento(clientes, regras, logica),
+    [clientes, regras, logica],
   );
 
-  function salvar() {
-    if (!nome.trim()) return;
+  async function salvar() {
+    if (!nome.trim() || salvando) return;
 
-    onSave({
-      id: `seg-${Date.now()}`,
+    setSalvando(true);
+    const resultado = await criarSegmentoAction({
       nome: nome.trim(),
-      descricao: descricao.trim() || undefined,
+      descricao: descricao.trim() || null,
       logica,
       regras: regras.filter((regra) => regra.valor.trim() !== ""),
-      createdAt: new Date().toISOString(),
     });
-    fechar(false);
+    setSalvando(false);
+
+    if (resultado.segmento) {
+      fechar(false);
+      router.refresh();
+    }
   }
 
   return (
@@ -154,9 +175,12 @@ export function SegmentBuilderSheet({ open, onOpenChange, onSave }: SegmentBuild
                   regra={regra}
                   onChange={(parcial) => atualizarRegra(regra.id, parcial)}
                   onRemove={() =>
-                    setRegras((atual) => atual.filter((item) => item.id !== regra.id))
+                    setRegras((atual) =>
+                      atual.filter((item) => item.id !== regra.id),
+                    )
                   }
                   podeRemover={regras.length > 1}
+                  opcoes={opcoes}
                 />
               ))}
             </div>
@@ -192,8 +216,8 @@ export function SegmentBuilderSheet({ open, onOpenChange, onSave }: SegmentBuild
           <Button variant="outline" onClick={() => fechar(false)}>
             Cancelar
           </Button>
-          <Button onClick={salvar} disabled={!nome.trim()}>
-            Salvar segmento
+          <Button onClick={salvar} disabled={!nome.trim() || salvando}>
+            {salvando ? "Salvando..." : "Salvar segmento"}
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -206,17 +230,22 @@ function RuleRow({
   onChange,
   onRemove,
   podeRemover,
+  opcoes,
 }: {
   regra: SegmentRule;
   onChange: (parcial: Partial<SegmentRule>) => void;
   onRemove: () => void;
   podeRemover: boolean;
+  opcoes: SegmentRuleOptions;
 }) {
   const config = SEGMENT_FIELDS[regra.campo];
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-2.5">
-      <Select value={regra.campo} onValueChange={(value) => onChange({ campo: value as SegmentField })}>
+      <Select
+        value={regra.campo}
+        onValueChange={(value) => onChange({ campo: value as SegmentField })}
+      >
         <SelectTrigger size="sm" className="w-40">
           <SelectValue />
         </SelectTrigger>
@@ -232,7 +261,9 @@ function RuleRow({
       {config.operadores.length > 1 ? (
         <Select
           value={regra.operador}
-          onValueChange={(value) => onChange({ operador: value as SegmentRule["operador"] })}
+          onValueChange={(value) =>
+            onChange({ operador: value as SegmentRule["operador"] })
+          }
         >
           <SelectTrigger size="sm" className="w-32">
             <SelectValue />
@@ -246,7 +277,9 @@ function RuleRow({
           </SelectContent>
         </Select>
       ) : (
-        <span className="text-xs text-muted-foreground">{OPERATOR_LABEL[regra.operador]}</span>
+        <span className="text-xs text-muted-foreground">
+          {OPERATOR_LABEL[regra.operador]}
+        </span>
       )}
 
       <div className="min-w-28 flex-1">
@@ -254,6 +287,7 @@ function RuleRow({
           campo={regra.campo}
           value={regra.valor}
           onChange={(valor) => onChange({ valor })}
+          opcoes={opcoes}
         />
       </div>
 

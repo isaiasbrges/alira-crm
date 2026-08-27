@@ -1,4 +1,4 @@
-import { MOCK_CATEGORIAS, MOCK_CIDADES, MOCK_TAGS, MOCK_TAMANHOS, MOCK_VENDEDORES } from "@/mocks/customers";
+import { TAMANHOS_PADRAO } from "@/lib/customer-constants";
 import type { SegmentField } from "@/types/segment";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,7 +9,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const OPCOES_FIXAS: Partial<Record<SegmentField, { value: string; label: string }[]>> = {
+export type SegmentRuleOptions = {
+  vendedores: { id: string; nome: string }[];
+  tags: { id: string; label: string }[];
+  categorias: string[];
+  cidades: string[];
+};
+
+const OPCOES_FIXAS: Partial<
+  Record<SegmentField, { value: string; label: string }[]>
+> = {
   status: [
     { value: "ativo", label: "Ativo" },
     { value: "inativo", label: "Inativo" },
@@ -26,10 +35,12 @@ export function RuleValueField({
   campo,
   value,
   onChange,
+  opcoes,
 }: {
   campo: SegmentField;
   value: string;
   onChange: (value: string) => void;
+  opcoes: SegmentRuleOptions;
 }) {
   const opcoesFixas = OPCOES_FIXAS[campo];
   if (opcoesFixas) {
@@ -50,15 +61,25 @@ export function RuleValueField({
   }
 
   if (campo === "categoria") {
-    return <ListaSelect opcoes={MOCK_CATEGORIAS} value={value} onChange={onChange} />;
+    return (
+      <ListaSelect
+        opcoes={opcoes.categorias}
+        value={value}
+        onChange={onChange}
+      />
+    );
   }
 
   if (campo === "tamanho") {
-    return <ListaSelect opcoes={MOCK_TAMANHOS} value={value} onChange={onChange} />;
+    return (
+      <ListaSelect opcoes={TAMANHOS_PADRAO} value={value} onChange={onChange} />
+    );
   }
 
   if (campo === "cidade") {
-    return <ListaSelect opcoes={MOCK_CIDADES} value={value} onChange={onChange} />;
+    return (
+      <ListaSelect opcoes={opcoes.cidades} value={value} onChange={onChange} />
+    );
   }
 
   if (campo === "vendedor") {
@@ -68,7 +89,7 @@ export function RuleValueField({
           <SelectValue placeholder="Selecione" />
         </SelectTrigger>
         <SelectContent>
-          {MOCK_VENDEDORES.map((vendedor) => (
+          {opcoes.vendedores.map((vendedor) => (
             <SelectItem key={vendedor.id} value={vendedor.id}>
               {vendedor.nome}
             </SelectItem>
@@ -85,7 +106,7 @@ export function RuleValueField({
           <SelectValue placeholder="Selecione" />
         </SelectTrigger>
         <SelectContent>
-          {MOCK_TAGS.map((tag) => (
+          {opcoes.tags.map((tag) => (
             <SelectItem key={tag.id} value={tag.id}>
               {tag.label}
             </SelectItem>
