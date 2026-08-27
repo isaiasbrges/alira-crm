@@ -2,28 +2,22 @@
 
 import { Bell, Menu, Search } from "lucide-react";
 
-import { Breadcrumb } from "@/components/layout/breadcrumb";
-import { PeriodPicker } from "@/components/layout/period-picker";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import type { CurrentUser } from "@/types/navigation";
 
 type HeaderProps = {
-  workspaceLabel: string;
-  user: CurrentUser;
   onOpenMobileNav: () => void;
   onOpenSearch: () => void;
 };
 
-export function Header({
-  workspaceLabel,
-  user,
-  onOpenMobileNav,
-  onOpenSearch,
-}: HeaderProps) {
+/**
+ * Barra superior: busca global e notificações.
+ *
+ * A identificação da loja fica na sidebar e a da página no cabeçalho de
+ * conteúdo, então aqui não há breadcrumb.
+ */
+export function Header({ onOpenMobileNav, onOpenSearch }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/55 px-4 backdrop-blur-xl backdrop-saturate-150 lg:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-3 px-4 lg:px-8">
       <Button
         variant="ghost"
         size="icon"
@@ -34,53 +28,31 @@ export function Header({
         <Menu />
       </Button>
 
-      <Breadcrumb root={workspaceLabel} />
-
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-3">
         <button
           type="button"
           onClick={onOpenSearch}
-          className="hidden h-9 w-64 items-center gap-2 rounded-md border border-input bg-card px-3 text-left text-sm text-muted-foreground shadow-xs transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 xl:flex"
+          className="flex h-10 items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 text-left text-sm text-muted-foreground shadow-sm transition-colors hover:border-input sm:w-72 lg:w-80"
         >
           <Search className="size-4 shrink-0" />
-          <span className="truncate text-xs">Buscar clientes, produtos, vendas...</span>
-          <kbd className="ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[10px]">
+          <span className="hidden truncate sm:block">
+            Buscar cliente, pedido, produto...
+          </span>
+          <kbd className="ml-auto hidden shrink-0 rounded-md border border-border px-1.5 py-0.5 font-sans text-[10px] text-muted-foreground sm:block">
             ⌘K
           </kbd>
         </button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onOpenSearch}
-          aria-label="Buscar"
-          className="xl:hidden"
+        <button
+          type="button"
+          aria-label="Notificações"
+          className="relative flex size-10 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-secondary"
         >
-          <Search />
-        </Button>
-
-        <div className="hidden md:block">
-          <PeriodPicker />
-        </div>
-
-        <Button variant="ghost" size="icon" aria-label="Notificações" className="relative">
-          <Bell />
-          <span className="absolute right-2 top-2 size-1.5 rounded-full bg-destructive" />
-        </Button>
-
-        <Separator orientation="vertical" className="mx-1 hidden h-8 sm:block" />
-
-        <div className="flex items-center gap-2.5">
-          <Avatar className="size-8">
-            <AvatarFallback>{user.iniciais}</AvatarFallback>
-          </Avatar>
-          <div className="hidden leading-tight sm:block">
-            <div className="text-sm font-medium">{user.nome}</div>
-            <div className="text-[11px] text-muted-foreground">
-              {user.funcao}
-            </div>
-          </div>
-        </div>
+          <Bell className="size-[18px]" />
+          <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+            3
+          </span>
+        </button>
       </div>
     </header>
   );

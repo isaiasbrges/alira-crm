@@ -1,72 +1,71 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 
-import { formatCurrency, formatDate } from "@/lib/format";
-import type { CampaignStatus, CampaignSummary } from "@/types/dashboard";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { formatCurrency, formatPercent } from "@/lib/format";
+import type { CampaignSummary } from "@/types/dashboard";
 
-const STATUS_VARIANT: Record<
-  CampaignStatus,
-  "default" | "secondary" | "accent" | "outline" | "success"
-> = {
-  enviada: "success",
-  agendada: "accent",
-  rascunho: "outline",
-  pausada: "secondary",
+const STATUS_CLASSES: Record<CampaignSummary["status"], string> = {
+  enviada: "text-muted-foreground",
+  agendada: "text-primary",
+  rascunho: "text-muted-foreground",
+  pausada: "text-warning",
 };
 
-const STATUS_LABEL: Record<CampaignStatus, string> = {
-  enviada: "Enviada",
-  agendada: "Agendada",
-  rascunho: "Rascunho",
-  pausada: "Pausada",
-};
+/** Métrica ainda sem valor aparece como travessão, não como zero. */
+function Metrica({ rotulo, valor }: { rotulo: string; valor?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] text-muted-foreground">{rotulo}</div>
+      <div className="truncate text-sm font-semibold">{valor ?? "—"}</div>
+    </div>
+  );
+}
 
 export function RecentCampaigns({ campaigns }: { campaigns: CampaignSummary[] }) {
   if (campaigns.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Nenhuma campanha criada ainda.
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground">Nenhuma campanha no período.</p>;
   }
 
   return (
-    <ul className="divide-y divide-border">
-      {campaigns.map((campaign) => (
-        <li key={campaign.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-medium">{campaign.nome}</span>
-              <Badge variant={STATUS_VARIANT[campaign.status]}>
-                {STATUS_LABEL[campaign.status]}
-              </Badge>
-            </div>
-            <div className="mt-0.5 text-xs text-muted-foreground">
-              {campaign.status === "enviada"
-                ? `${campaign.enviadas} enviadas · ${campaign.respostas} respostas`
-                : formatDate(campaign.data)}
+    <ul className="space-y-5">
+      {campaigns.map((campanha) => (
+        <li key={campanha.id}>
+          <div className="flex items-start gap-3">
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+              <ImageIcon className="size-5" />
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium">{campanha.nome}</div>
+              <div
+                className={cn(
+                  "mt-0.5 truncate text-xs",
+                  STATUS_CLASSES[campanha.status],
+                  campanha.status === "agendada" &&
+                    "inline-block rounded-md bg-accent px-1.5 py-0.5"
+                )}
+              >
+                {campanha.dataLabel}
+              </div>
             </div>
           </div>
 
-          <div className="shrink-0 text-right">
-            <div className="text-sm font-medium tabular-nums">
-              {campaign.receita > 0 ? formatCurrency(campaign.receita) : "—"}
-            </div>
-            <div className="text-[11px] text-muted-foreground">receita</div>
+          <div className="mt-3 grid grid-cols-3 gap-3">
+            <Metrica
+              rotulo="Abertura"
+              valor={campanha.abertura ? formatPercent(campanha.abertura, 0) : undefined}
+            />
+            <Metrica
+              rotulo="Conversão"
+              valor={campanha.conversao ? formatPercent(campanha.conversao) : undefined}
+            />
+            <Metrica
+              rotulo="Receita"
+              valor={campanha.receita ? formatCurrency(campanha.receita, true) : undefined}
+            />
           </div>
         </li>
       ))}
-
-      <li className="pt-3">
-        <Link
-          href="/campanhas"
-          className="inline-flex items-center gap-1 text-xs font-medium text-foreground transition-opacity hover:opacity-70"
-        >
-          Ver todas as campanhas
-          <ArrowUpRight className="size-3.5" />
-        </Link>
-      </li>
     </ul>
   );
 }

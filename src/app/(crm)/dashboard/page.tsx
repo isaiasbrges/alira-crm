@@ -1,106 +1,152 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import {
-  MOCK_CATEGORY_SLICES,
-  MOCK_KPIS,
-  MOCK_REACTIVATION_TARGETS,
+  MOCK_ATTENTION_CUSTOMERS,
+  MOCK_HERO_KPIS,
+  MOCK_PERFORMANCE_SERIES,
   MOCK_RECENT_CAMPAIGNS,
-  MOCK_REPURCHASE_SERIES,
-  MOCK_REVENUE_SERIES,
+  MOCK_STAT_TILES,
   MOCK_TODAY_TASKS,
+  MOCK_TOP_SELLERS,
 } from "@/mocks/dashboard";
+import { carregarWorkspace } from "@/lib/tenant/workspace";
 import { PageHeader } from "@/components/layout/page-header";
-import { KpiCard } from "@/components/dashboard/kpi-card";
-import { RevenueChart } from "@/components/dashboard/revenue-chart";
-import { RepurchaseChart } from "@/components/dashboard/repurchase-chart";
-import { CategoryChart } from "@/components/dashboard/category-chart";
+import { PeriodPicker } from "@/components/layout/period-picker";
+import { AttentionCustomers } from "@/components/dashboard/attention-customers";
+import { HeroKpiCard } from "@/components/dashboard/hero-kpi-card";
+import { PerformanceChart } from "@/components/dashboard/performance-chart";
 import { RecentCampaigns } from "@/components/dashboard/recent-campaigns";
+import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { TodayTasks } from "@/components/dashboard/today-tasks";
-import { ReactivationList } from "@/components/dashboard/reactivation-list";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { TopSellers } from "@/components/dashboard/top-sellers";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Dashboard · Alira CRM",
 };
 
-export default function DashboardPage() {
+/** Saudação pelo horário do servidor; vira horário da loja quando houver fuso. */
+function saudacao(): string {
+  const hora = new Date().getHours();
+  if (hora < 12) return "Bom dia";
+  if (hora < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function CardLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className="text-sm font-medium text-primary hover:underline">
+      {children}
+    </Link>
+  );
+}
+
+export default async function DashboardPage() {
+  const { user } = await carregarWorkspace();
+  const primeiroNome = user.nome.split(" ")[0];
+
   return (
     <>
       <PageHeader
-        titulo="Dashboard"
-        descricao="Visão geral da operação da loja no período selecionado."
-      />
+        titulo={
+          <>
+            {saudacao()}, {primeiroNome}! <span aria-hidden>👋</span>
+          </>
+        }
+        descricao="Aqui está o resumo da sua loja hoje."
+      >
+        <PeriodPicker />
+      </PageHeader>
 
-      <section aria-label="Indicadores" className="grid grid-cols-2 gap-3 *:min-w-0 lg:grid-cols-3 xl:grid-cols-6">
-        {MOCK_KPIS.map((kpi) => (
-          <KpiCard key={kpi.id} kpi={kpi} />
+      <section
+        aria-label="Indicadores principais"
+        className="grid gap-4 *:min-w-0 lg:grid-cols-2"
+      >
+        {MOCK_HERO_KPIS.map((kpi) => (
+          <HeroKpiCard key={kpi.id} kpi={kpi} />
         ))}
       </section>
 
-      <section className="mt-6 grid gap-4 *:min-w-0 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Receita por período</CardTitle>
-            <CardDescription>Total da loja e parcela originada por campanhas.</CardDescription>
+      <section className="mt-4 grid gap-4 *:min-w-0 xl:grid-cols-3">
+        <Card className="gap-0 xl:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-base">
+                Receita e recompra ao longo do tempo
+              </CardTitle>
+              <span className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground">
+                Diário
+              </span>
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-4">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="h-0.5 w-4 rounded-full bg-chart-1" />
+                Receita (R$)
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="w-4 border-t-2 border-dashed border-chart-2" />
+                Taxa de recompra (%)
+              </span>
+            </div>
           </CardHeader>
+
           <CardContent className="pb-6">
-            <RevenueChart data={MOCK_REVENUE_SERIES} />
+            <PerformanceChart data={MOCK_PERFORMANCE_SERIES} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recompra por período</CardTitle>
-            <CardDescription>Percentual de clientes com mais de uma compra.</CardDescription>
+        <Card className="gap-0 p-0">
+          <CardHeader className="px-6 pb-4 pt-6">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base">Clientes que merecem atenção</CardTitle>
+              <CardLink href="/clientes">Ver todos</CardLink>
+            </div>
           </CardHeader>
-          <CardContent className="pb-6">
-            <RepurchaseChart data={MOCK_REPURCHASE_SERIES} />
-          </CardContent>
+
+          <AttentionCustomers customers={MOCK_ATTENTION_CUSTOMERS} />
         </Card>
       </section>
 
-      <section className="mt-4 grid gap-4 *:min-w-0 xl:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Clientes por categoria</CardTitle>
-            <CardDescription>Categorias mais compradas na base.</CardDescription>
-          </CardHeader>
-          <CardContent className="pb-6">
-            <CategoryChart data={MOCK_CATEGORY_SLICES} />
-          </CardContent>
-        </Card>
+      <section aria-label="Indicadores da base" className="mt-4">
+        <StatTiles tiles={MOCK_STAT_TILES} />
+      </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Campanhas recentes</CardTitle>
-            <CardDescription>Desempenho dos últimos envios.</CardDescription>
+      <section className="mt-4 grid gap-4 *:min-w-0 xl:grid-cols-3">
+        <Card className="gap-0">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base">Campanhas recentes</CardTitle>
+              <CardLink href="/campanhas">Ver todas</CardLink>
+            </div>
           </CardHeader>
           <CardContent className="pb-6">
             <RecentCampaigns campaigns={MOCK_RECENT_CAMPAIGNS} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Tarefas de hoje</CardTitle>
-            <CardDescription>Agenda dos vendedores.</CardDescription>
+        <Card className="gap-0">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base">Tarefas de hoje</CardTitle>
+              <CardLink href="/tarefas">Ver todas</CardLink>
+            </div>
           </CardHeader>
           <CardContent className="pb-6">
             <TodayTasks tasks={MOCK_TODAY_TASKS} />
           </CardContent>
         </Card>
-      </section>
 
-      <section className="mt-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Clientes para reativar</CardTitle>
-            <CardDescription>
-              Compraram antes, mas estão há mais de 180 dias sem retornar.
-            </CardDescription>
+        <Card className="gap-0">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base">Top vendedores</CardTitle>
+              <CardLink href="/relatorios">Ver ranking</CardLink>
+            </div>
           </CardHeader>
           <CardContent className="pb-6">
-            <ReactivationList targets={MOCK_REACTIVATION_TARGETS} />
+            <TopSellers sellers={MOCK_TOP_SELLERS} />
           </CardContent>
         </Card>
       </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown, Store as StoreIcon } from "lucide-react";
+import { Check, ChevronDown, Store as StoreIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/types/navigation";
@@ -18,6 +18,15 @@ type WorkspaceSwitcherProps = {
   collapsed: boolean;
 };
 
+function iniciais(nome: string): string {
+  return nome
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherProps) {
   const { organization, store, stores } = workspace;
 
@@ -26,12 +35,12 @@ export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherPro
       <DropdownMenuTrigger
         aria-label="Trocar de loja"
         className={cn(
-          "flex items-center gap-2.5 rounded-md text-left transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-          collapsed ? "size-9 justify-center" : "h-11 w-full px-2"
+          "flex items-center gap-3 rounded-xl bg-white/[0.06] text-left transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+          collapsed ? "size-10 w-full justify-center" : "h-14 w-full px-3"
         )}
       >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-sky-400 to-blue-600 text-white shadow-[0_0_16px_-4px_rgb(59_130_246/0.9)]">
-          <StoreIcon className="size-3.5" />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 text-xs font-semibold text-white">
+          {iniciais(organization.nome)}
         </span>
 
         {!collapsed && (
@@ -40,11 +49,11 @@ export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherPro
               <span className="block truncate text-sm font-semibold text-sidebar-foreground">
                 {organization.nome}
               </span>
-              <span className="block truncate text-[11px] text-sidebar-foreground/45">
+              <span className="block truncate text-[11px] text-sidebar-muted">
                 {store.nome}
               </span>
             </span>
-            <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-foreground/40" />
+            <ChevronDown className="size-4 shrink-0 text-sidebar-muted" />
           </>
         )}
       </DropdownMenuTrigger>
@@ -60,9 +69,9 @@ export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherPro
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        {/* Trocar de loja grava a escolha na sessão (User.ultimaStoreId) —
-            é assim que a próxima requisição sabe qual loja abrir. A ação
-            entra junto com a autenticação. */}
+        {/* Trocar de loja grava a escolha na sessão (User.ultimaStoreId) — é
+            assim que a próxima requisição sabe qual loja abrir. A ação entra
+            junto com a autenticação. */}
         <DropdownMenuItem disabled className="text-xs">
           Adicionar loja — em breve
         </DropdownMenuItem>

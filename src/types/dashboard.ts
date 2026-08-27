@@ -1,29 +1,40 @@
-export type KpiTrend = "up" | "down" | "flat";
+export type Tint = "blue" | "violet" | "amber" | "green";
 
-export type Kpi = {
+/** Indicador de destaque, exibido em cartão largo no topo do dashboard. */
+export type HeroKpi = {
   id: string;
   label: string;
   value: string;
-  /** Variação percentual em relação ao período anterior. */
-  delta?: number;
-  trend: KpiTrend;
+  /** Variação percentual sobre o período anterior. */
+  delta: number;
+  comparacao: string;
+  tint: Tint;
   hint?: string;
 };
 
-export type RevenuePoint = {
-  periodo: string;
+/** Indicador secundário, exibido na faixa de quatro colunas. */
+export type StatTile = {
+  id: string;
+  label: string;
+  value: string;
+  delta: number;
+  comparacao: string;
+  tint: Tint;
+};
+
+/** Ponto da série que combina receita (R$) e taxa de recompra (%). */
+export type PerformancePoint = {
+  dia: string;
   receita: number;
-  receitaCampanhas: number;
+  recompra: number;
 };
 
-export type RepurchasePoint = {
-  periodo: string;
-  taxa: number;
-};
-
-export type CategorySlice = {
-  categoria: string;
-  clientes: number;
+export type AttentionCustomer = {
+  id: string;
+  nome: string;
+  vip: boolean;
+  diasSemComprar: number;
+  acumulado: number;
 };
 
 export type CampaignStatus = "rascunho" | "agendada" | "enviada" | "pausada";
@@ -32,10 +43,12 @@ export type CampaignSummary = {
   id: string;
   nome: string;
   status: CampaignStatus;
-  enviadas: number;
-  respostas: number;
-  receita: number;
-  data: string;
+  /** Texto pronto: "Enviada em 05/05/2026" ou "Envio em 20/05/2026". */
+  dataLabel: string;
+  /** Ausentes enquanto a campanha não saiu. */
+  abertura?: number;
+  conversao?: number;
+  receita?: number;
 };
 
 export type TaskPriority = "alta" | "media" | "baixa";
@@ -43,16 +56,17 @@ export type TaskPriority = "alta" | "media" | "baixa";
 export type TaskSummary = {
   id: string;
   titulo: string;
-  clienteNome: string;
-  responsavel: string;
+  /** Origem da tarefa: "Reativação • VIP". */
+  contexto: string;
   horario: string;
   prioridade: TaskPriority;
+  responsavel: string;
 };
 
-export type ReactivationTarget = {
-  id: string;
+export type SellerRank = {
+  posicao: number;
   nome: string;
-  diasSemComprar: number;
-  totalGasto: number;
-  ultimaCategoria: string;
+  valor: number;
+  /** Participação sobre o líder, para a barra de progresso. */
+  percentual: number;
 };

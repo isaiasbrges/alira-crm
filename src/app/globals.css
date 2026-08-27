@@ -6,56 +6,67 @@
 :root {
   --radius: 0.875rem;
 
-  /* Base — navy profundo, leitura confortável em tela grande */
-  --background: #070b16;
-  --foreground: #e9eefb;
+  /* Base — cinza muito claro, cards brancos por cima */
+  --background: #f5f7fa;
+  --foreground: #101828;
 
-  /* Superfícies de vidro: translúcidas, nunca opacas */
-  --card: rgb(255 255 255 / 0.045);
-  --card-foreground: #e9eefb;
-  --card-border: rgb(255 255 255 / 0.09);
+  --card: #ffffff;
+  --card-foreground: #101828;
 
-  --popover: #0e1526;
-  --popover-foreground: #e9eefb;
+  --popover: #ffffff;
+  --popover-foreground: #101828;
 
-  --primary: #3b82f6;
-  --primary-foreground: #f8fbff;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
 
-  --secondary: rgb(255 255 255 / 0.06);
-  --secondary-foreground: #e9eefb;
+  --secondary: #f2f4f7;
+  --secondary-foreground: #344054;
 
-  --muted: rgb(255 255 255 / 0.06);
-  --muted-foreground: #8f9cb8;
+  --muted: #f2f4f7;
+  --muted-foreground: #667085;
 
-  /* Accent — azul elétrico contido */
-  --accent: rgb(59 130 246 / 0.16);
-  --accent-foreground: #93c5fd;
+  --accent: #eff4ff;
+  --accent-foreground: #1d4ed8;
 
-  --destructive: #f4636a;
-  --destructive-foreground: #fff5f5;
+  --destructive: #d92d20;
+  --destructive-foreground: #ffffff;
 
-  --success: #34d399;
-  --success-foreground: #052e21;
+  --success: #12b76a;
+  --success-foreground: #ffffff;
 
-  --border: rgb(255 255 255 / 0.09);
-  --input: rgb(255 255 255 / 0.12);
-  --ring: #3b82f6;
+  --warning: #f79009;
 
-  --chart-1: #3b82f6;
-  --chart-2: #22d3ee;
-  --chart-3: #34d399;
-  --chart-4: #a78bfa;
-  --chart-5: #64748b;
+  --border: #eaecf0;
+  --input: #d0d5dd;
+  --ring: #2563eb;
 
-  /* Sidebar — vidro mais escuro que o conteúdo, para dar profundidade */
-  --sidebar: rgb(6 10 22 / 0.72);
-  --sidebar-foreground: #e9eefb;
-  --sidebar-primary: rgb(59 130 246 / 0.18);
-  --sidebar-primary-foreground: #bfdbfe;
-  --sidebar-accent: rgb(255 255 255 / 0.05);
-  --sidebar-accent-foreground: #e9eefb;
-  --sidebar-border: rgb(255 255 255 / 0.07);
-  --sidebar-ring: #3b82f6;
+  --chart-1: #2563eb;
+  --chart-2: #84adff;
+  --chart-3: #12b76a;
+  --chart-4: #7c3aed;
+  --chart-5: #f79009;
+
+  /* Sidebar — navy profundo com leve degradê, texto claro */
+  --sidebar: #0b1533;
+  --sidebar-end: #101f4d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-muted: #93a3c4;
+  --sidebar-primary: #1d4ed8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(255 255 255 / 0.07);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #60a5fa;
+
+  /* Tons pastel dos ícones de indicador */
+  --tint-blue: #eff4ff;
+  --tint-blue-fg: #2563eb;
+  --tint-violet: #f4f3ff;
+  --tint-violet-fg: #7c3aed;
+  --tint-amber: #fff6ed;
+  --tint-amber-fg: #f79009;
+  --tint-green: #ecfdf3;
+  --tint-green-fg: #12b76a;
 }
 
 @theme inline {
@@ -64,7 +75,6 @@
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-card-border: var(--card-border);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
 
@@ -82,6 +92,7 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
 
   --color-border: var(--border);
   --color-input: var(--input);
@@ -95,12 +106,22 @@
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-tint-blue: var(--tint-blue);
+  --color-tint-blue-fg: var(--tint-blue-fg);
+  --color-tint-violet: var(--tint-violet);
+  --color-tint-violet-fg: var(--tint-violet-fg);
+  --color-tint-amber: var(--tint-amber);
+  --color-tint-amber-fg: var(--tint-amber-fg);
+  --color-tint-green: var(--tint-green);
+  --color-tint-green-fg: var(--tint-green-fg);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -113,7 +134,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/40;
   }
 
   html {
@@ -121,27 +142,14 @@
   }
 
   body {
-    @apply text-foreground;
-    /* Malha técnica + halos fixos: é o que o vidro refrata ao rolar a página. */
-    background-color: var(--background);
-    background-image:
-      linear-gradient(rgb(255 255 255 / 0.022) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(255 255 255 / 0.022) 1px, transparent 1px),
-      radial-gradient(58rem 40rem at 10% -6%, rgb(59 130 246 / 0.3), transparent 62%),
-      radial-gradient(46rem 32rem at 88% 2%, rgb(34 211 238 / 0.17), transparent 62%),
-      radial-gradient(44rem 38rem at 72% 92%, rgb(139 92 246 / 0.16), transparent 64%);
-    background-size: 56px 56px, 56px 56px, auto, auto, auto;
-    background-attachment: fixed;
+    @apply bg-background text-foreground;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
 @layer components {
-  /* Superfície de vidro padrão do produto. */
-  .glass-surface {
-    background-color: var(--card);
-    border: 1px solid var(--card-border);
-    backdrop-filter: blur(18px) saturate(140%);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  /* Degradê da sidebar: navy escuro no topo, levemente mais azul embaixo. */
+  .sidebar-surface {
+    background-image: linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar-end) 100%);
   }
 }

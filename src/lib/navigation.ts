@@ -1,53 +1,36 @@
 import {
-  ChartNoAxesCombined,
+  BarChart3,
+  Box,
   ClipboardCheck,
+  Headset,
   LayoutDashboard,
-  MessageCircle,
-  Send,
+  Megaphone,
   Settings,
+  Share2,
   ShoppingBag,
-  Tags,
+  Target,
   Users,
-  UsersRound,
 } from "lucide-react";
 
 import type { NavSection } from "@/types/navigation";
 
+/**
+ * Navegação principal — lista única, na ordem da referência de design.
+ */
 export const NAV_SECTIONS: NavSection[] = [
   {
-    id: "operacao",
-    label: "Operação",
+    id: "principal",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      {
-        label: "Clientes",
-        href: "/clientes",
-        icon: Users,
-        children: [
-          { label: "Todos os clientes", href: "/clientes" },
-          { label: "Aniversariantes", href: "/clientes?filtro=aniversariantes" },
-          { label: "Para reativar", href: "/clientes?filtro=reativar" },
-        ],
-      },
-      { label: "Produtos", href: "/produtos", icon: Tags },
+      { label: "Clientes", href: "/clientes", icon: Users },
       { label: "Vendas", href: "/vendas", icon: ShoppingBag },
-    ],
-  },
-  {
-    id: "relacionamento",
-    label: "Relacionamento",
-    items: [
-      { label: "Segmentos", href: "/segmentos", icon: UsersRound },
-      { label: "Campanhas", href: "/campanhas", icon: Send },
+      { label: "Atendimentos", href: "/atendimentos", icon: Headset },
       { label: "Tarefas", href: "/tarefas", icon: ClipboardCheck },
-      { label: "WhatsApp", href: "/whatsapp", icon: MessageCircle },
-    ],
-  },
-  {
-    id: "gestao",
-    label: "Gestão",
-    items: [
-      { label: "Relatórios", href: "/relatorios", icon: ChartNoAxesCombined },
+      { label: "Campanhas", href: "/campanhas", icon: Megaphone },
+      { label: "Produtos", href: "/produtos", icon: Box },
+      { label: "Segmentos", href: "/segmentos", icon: Share2 },
+      { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
+      { label: "Metas", href: "/metas", icon: Target },
       { label: "Configurações", href: "/configuracoes", icon: Settings },
     ],
   },
@@ -56,13 +39,14 @@ export const NAV_SECTIONS: NavSection[] = [
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   clientes: "Clientes",
-  produtos: "Produtos",
   vendas: "Vendas",
-  segmentos: "Segmentos",
-  campanhas: "Campanhas",
+  atendimentos: "Atendimentos",
   tarefas: "Tarefas",
-  whatsapp: "WhatsApp",
+  campanhas: "Campanhas",
+  produtos: "Produtos",
+  segmentos: "Segmentos",
   relatorios: "Relatórios",
+  metas: "Metas",
   configuracoes: "Configurações",
 };
 
