@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 
 import { getTenantContext } from "@/lib/tenant/context";
 import { getTenantDb, tenantDb } from "@/lib/tenant/db";
+import type { Customer, CustomerStatus } from "@/types/customer";
 
 /**
  * Repositório de clientes — referência de como os demais devem ser escritos.
@@ -27,7 +28,13 @@ export async function listarClientes(params: ListarClientesParams = {}) {
   const ctx = await getTenantContext();
   const db = tenantDb(ctx);
 
-  const { busca, status, apenasLojaAtiva = false, page = 1, perPage = PER_PAGE_PADRAO } = params;
+  const {
+    busca,
+    status,
+    apenasLojaAtiva = false,
+    page = 1,
+    perPage = PER_PAGE_PADRAO,
+  } = params;
 
   const where: Prisma.CustomerWhereInput = {
     ...(apenasLojaAtiva && ctx.storeId ? { storeId: ctx.storeId } : {}),
@@ -49,7 +56,9 @@ export async function listarClientes(params: ListarClientesParams = {}) {
       where,
       include: {
         seller: { select: { id: true, nome: true } },
-        tags: { include: { tag: { select: { id: true, label: true, cor: true } } } },
+        tags: {
+          include: { tag: { select: { id: true, label: true, cor: true } } },
+        },
       },
       orderBy: { ultimaCompra: "desc" },
       skip: (page - 1) * perPage,
@@ -89,6 +98,119 @@ export async function contarClientesPorStatus() {
   ]);
 
   return { total, ativos, inativos, vip, comWhatsapp };
+}
+
+const STATUS_PARA_TELA: Record<string, CustomerStatus> = {
+  ATIVO: "ativo",
+  INATIVO: "inativo",
+  VIP: "vip",
+};
+
+function paraArrayDeString(valor: unknown): string[] {
+  return Array.isArray(valor)
+    ? valor.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function anosDesde(data: Date, referencia: Date): number {
+  const anos = (referencia.getTime() - data.getTime()) / (365.25 * 86_400_000);
+  return Math.max(anos, 1 / 12);
+}
+
+type ClienteComRelacoes = Prisma.CustomerGetPayload<{
+  include: {
+    seller: { select: { id: true; nome: true } };
+    preferences: true;
+    tags: { include: { tag: { select: { id: true; label: true } } } };
+  };
+}>;
+
+function mapearClienteParaTela(
+  cliente: ClienteComRelacoes,
+  referencia: Date,
+): Customer {
+  return {
+    id: cliente.id,
+    nome: cliente.nome,
+    whatsapp: cliente.whatsapp,
+    email: cliente.email ?? undefined,
+    nascimento: cliente.nascimento?.toISOString().slice(0, 10),
+    cidade: cliente.cidade ?? "",
+    estado: cliente.estado ?? "",
+    tamanhos: {
+      camiseta: cliente.preferences?.tamanhoCamiseta ?? undefined,
+      calca: cliente.preferences?.tamanhoCalca ?? undefined,
+      calcado: cliente.preferences?.tamanhoCalcado ?? undefined,
+    },
+    preferencias: {
+      estilo: cliente.preferences?.estilo ?? undefined,
+      cores: paraArrayDeString(cliente.preferences?.cores),
+      marcas: paraArrayDeString(cliente.preferences?.marcas),
+      categorias: paraArrayDeString(cliente.preferences?.categoriasFavoritas),
+    },
+    vendedorId: cliente.sellerId ?? "",
+    vendedorNome: cliente.seller?.nome ?? "—",
+    tags: cliente.tags.map(({ tag }) => ({ id: tag.id, label: tag.label })),
+    status: STATUS_PARA_TELA[cliente.status] ?? "ativo",
+    consentimentoWhatsapp: cliente.consentimentoWhatsapp,
+    ultimaCompra: cliente.ultimaCompra?.toISOString().slice(0, 10),
+    totalGasto: Number(cliente.totalGasto),
+    ticketMedio: Number(cliente.ticketMedio),
+    frequenciaCompra: Number(
+      (cliente.totalCompras / anosDesde(cliente.createdAt, referencia)).toFixed(
+        1,
+      ),
+    ),
+  };
+}
+
+/**
+ * Carrega tudo que a tela de Clientes precisa num único lugar: a lista já no
+ * formato que a UI espera, mais as opções dos filtros — extraídas dos dados
+ * reais da loja, não de uma lista fixa.
+ *
+ * Escopado à loja ativa: cliente pertence a uma loja (schema não permite
+ * `storeId` nulo), então listar por organização inteira misturaria bases de
+ * lojas diferentes na mesma tabela.
+ */
+export async function listarClientesTela() {
+  const ctx = await getTenantContext();
+  const db = tenantDb(ctx);
+
+  const [clientes, vendedores, tags] = await Promise.all([
+    db.customer.findMany({
+      where: ctx.storeId ? { storeId: ctx.storeId } : undefined,
+      include: {
+        seller: { select: { id: true, nome: true } },
+        preferences: true,
+        tags: { include: { tag: { select: { id: true, label: true } } } },
+      },
+      orderBy: { nome: "asc" },
+    }),
+    db.seller.findMany({
+      where: { ativo: true, ...(ctx.storeId ? { storeId: ctx.storeId } : {}) },
+      select: { id: true, nome: true },
+      orderBy: { nome: "asc" },
+    }),
+    db.tag.findMany({
+      select: { id: true, label: true },
+      orderBy: { label: "asc" },
+    }),
+  ]);
+
+  const referencia = new Date();
+  const mapeados = clientes.map((cliente) =>
+    mapearClienteParaTela(cliente, referencia),
+  );
+
+  const cidades = [
+    ...new Set(mapeados.map((cliente) => cliente.cidade).filter(Boolean)),
+  ].sort();
+  const categorias = [
+    ...new Set(mapeados.flatMap((cliente) => cliente.preferencias.categorias)),
+  ].sort();
+
+  return { clientes: mapeados, vendedores, tags, cidades, categorias };
 }
 
 export type CriarClienteInput = {

@@ -4,13 +4,7 @@ import { SlidersHorizontal, X } from "lucide-react";
 
 import type { CustomerFilters } from "@/types/customer";
 import { CUSTOMER_FILTERS_DEFAULT } from "@/types/customer";
-import {
-  MOCK_CATEGORIAS,
-  MOCK_CIDADES,
-  MOCK_TAGS,
-  MOCK_TAMANHOS,
-  MOCK_VENDEDORES,
-} from "@/mocks/customers";
+import { TAMANHOS_PADRAO } from "@/lib/customer-constants";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,11 +22,22 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+export type CustomerFilterOptions = {
+  vendedores: { id: string; nome: string }[];
+  tags: { id: string; label: string }[];
+  cidades: string[];
+  categorias: string[];
+};
+
 type CustomerFiltersProps = {
   filters: CustomerFilters;
-  onChange: <K extends keyof CustomerFilters>(key: K, value: CustomerFilters[K]) => void;
+  onChange: <K extends keyof CustomerFilters>(
+    key: K,
+    value: CustomerFilters[K],
+  ) => void;
   onReset: () => void;
   activeCount: number;
+  options: CustomerFilterOptions;
 };
 
 const ULTIMA_COMPRA_OPCOES = [
@@ -44,13 +49,19 @@ const ULTIMA_COMPRA_OPCOES = [
 ];
 
 /** Compartilhado entre a barra desktop e o drawer mobile. */
-function FilterFields({ filters, onChange }: Omit<CustomerFiltersProps, "onReset" | "activeCount">) {
+function FilterFields({
+  filters,
+  onChange,
+  options,
+}: Omit<CustomerFiltersProps, "onReset" | "activeCount">) {
   return (
     <>
       <FilterField label="Status">
         <Select
           value={filters.status}
-          onValueChange={(value) => onChange("status", value as CustomerFilters["status"])}
+          onValueChange={(value) =>
+            onChange("status", value as CustomerFilters["status"])
+          }
         >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
@@ -65,13 +76,16 @@ function FilterFields({ filters, onChange }: Omit<CustomerFiltersProps, "onReset
       </FilterField>
 
       <FilterField label="Categoria">
-        <Select value={filters.categoria} onValueChange={(value) => onChange("categoria", value)}>
+        <Select
+          value={filters.categoria}
+          onValueChange={(value) => onChange("categoria", value)}
+        >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas</SelectItem>
-            {MOCK_CATEGORIAS.map((categoria) => (
+            {options.categorias.map((categoria) => (
               <SelectItem key={categoria} value={categoria}>
                 {categoria}
               </SelectItem>
@@ -81,13 +95,16 @@ function FilterFields({ filters, onChange }: Omit<CustomerFiltersProps, "onReset
       </FilterField>
 
       <FilterField label="Tamanho">
-        <Select value={filters.tamanho} onValueChange={(value) => onChange("tamanho", value)}>
+        <Select
+          value={filters.tamanho}
+          onValueChange={(value) => onChange("tamanho", value)}
+        >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos</SelectItem>
-            {MOCK_TAMANHOS.map((tamanho) => (
+            {TAMANHOS_PADRAO.map((tamanho) => (
               <SelectItem key={tamanho} value={tamanho}>
                 {tamanho}
               </SelectItem>
@@ -97,13 +114,16 @@ function FilterFields({ filters, onChange }: Omit<CustomerFiltersProps, "onReset
       </FilterField>
 
       <FilterField label="Vendedor">
-        <Select value={filters.vendedor} onValueChange={(value) => onChange("vendedor", value)}>
+        <Select
+          value={filters.vendedor}
+          onValueChange={(value) => onChange("vendedor", value)}
+        >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos</SelectItem>
-            {MOCK_VENDEDORES.map((vendedor) => (
+            {options.vendedores.map((vendedor) => (
               <SelectItem key={vendedor.id} value={vendedor.id}>
                 {vendedor.nome}
               </SelectItem>
@@ -131,13 +151,16 @@ function FilterFields({ filters, onChange }: Omit<CustomerFiltersProps, "onReset
       </FilterField>
 
       <FilterField label="Cidade">
-        <Select value={filters.cidade} onValueChange={(value) => onChange("cidade", value)}>
+        <Select
+          value={filters.cidade}
+          onValueChange={(value) => onChange("cidade", value)}
+        >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas</SelectItem>
-            {MOCK_CIDADES.map((cidade) => (
+            {options.cidades.map((cidade) => (
               <SelectItem key={cidade} value={cidade}>
                 {cidade}
               </SelectItem>
@@ -147,13 +170,16 @@ function FilterFields({ filters, onChange }: Omit<CustomerFiltersProps, "onReset
       </FilterField>
 
       <FilterField label="Tag">
-        <Select value={filters.tag} onValueChange={(value) => onChange("tag", value)}>
+        <Select
+          value={filters.tag}
+          onValueChange={(value) => onChange("tag", value)}
+        >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas</SelectItem>
-            {MOCK_TAGS.map((tag) => (
+            {options.tags.map((tag) => (
               <SelectItem key={tag.id} value={tag.id}>
                 {tag.label}
               </SelectItem>
@@ -165,10 +191,18 @@ function FilterFields({ filters, onChange }: Omit<CustomerFiltersProps, "onReset
   );
 }
 
-function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+function FilterField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-w-0 space-y-1.5">
-      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+      <Label className="text-[11px] font-medium text-muted-foreground">
+        {label}
+      </Label>
       {children}
     </div>
   );
@@ -180,11 +214,12 @@ export function CustomerFiltersPanel({
   onChange,
   onReset,
   activeCount,
+  options,
 }: CustomerFiltersProps) {
   return (
     <div className="hidden rounded-xl border border-border bg-card p-4 lg:block">
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 2xl:grid-cols-7">
-        <FilterFields filters={filters} onChange={onChange} />
+        <FilterFields filters={filters} onChange={onChange} options={options} />
       </div>
 
       {activeCount > 0 && (
@@ -193,7 +228,12 @@ export function CustomerFiltersPanel({
             {activeCount} filtro{activeCount > 1 ? "s" : ""} aplicado
             {activeCount > 1 ? "s" : ""}
           </span>
-          <Button variant="ghost" size="sm" onClick={onReset} className="h-7 gap-1 text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onReset}
+            className="h-7 gap-1 text-xs"
+          >
             <X className="size-3" />
             Limpar
           </Button>
@@ -209,6 +249,7 @@ export function CustomerFiltersDrawer({
   onChange,
   onReset,
   activeCount,
+  options,
 }: CustomerFiltersProps) {
   return (
     <Sheet>
@@ -228,9 +269,17 @@ export function CustomerFiltersDrawer({
           <SheetTitle>Filtros</SheetTitle>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-4">
-          <FilterFields filters={filters} onChange={onChange} />
+          <FilterFields
+            filters={filters}
+            onChange={onChange}
+            options={options}
+          />
           {activeCount > 0 && (
-            <Button variant="outline" onClick={onReset} className="w-full gap-2">
+            <Button
+              variant="outline"
+              onClick={onReset}
+              className="w-full gap-2"
+            >
               <X className="size-4" />
               Limpar filtros
             </Button>
@@ -242,7 +291,9 @@ export function CustomerFiltersDrawer({
 }
 
 export function countActiveFilters(filters: CustomerFilters): number {
-  return (Object.keys(CUSTOMER_FILTERS_DEFAULT) as (keyof CustomerFilters)[]).filter(
-    (key) => key !== "busca" && filters[key] !== CUSTOMER_FILTERS_DEFAULT[key]
+  return (
+    Object.keys(CUSTOMER_FILTERS_DEFAULT) as (keyof CustomerFilters)[]
+  ).filter(
+    (key) => key !== "busca" && filters[key] !== CUSTOMER_FILTERS_DEFAULT[key],
   ).length;
 }

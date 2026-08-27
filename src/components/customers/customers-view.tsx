@@ -1,40 +1,57 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Plus, Search, UsersRound } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, UsersRound } from "lucide-react";
 
 import { formatNumber } from "@/lib/format";
-import type { CustomerFilters } from "@/types/customer";
+import type { Customer, CustomerFilters } from "@/types/customer";
 import { CUSTOMER_FILTERS_DEFAULT } from "@/types/customer";
-import { MOCK_CUSTOMERS } from "@/mocks/customers";
-import { buildCustomerKpis, filterCustomers } from "@/services/customer-metrics";
+import {
+  buildCustomerKpis,
+  filterCustomers,
+} from "@/services/customer-metrics";
 import { paginate, totalPages } from "@/lib/pagination";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
 import { CustomerTable } from "@/components/customers/customer-table";
+import { CreateCustomerDialog } from "@/components/customers/create-customer-dialog";
 import {
   CustomerFiltersDrawer,
   CustomerFiltersPanel,
   countActiveFilters,
+  type CustomerFilterOptions,
 } from "@/components/customers/customer-filters";
 
 const POR_PAGINA = 8;
 
-export function CustomersView() {
-  const [filters, setFilters] = React.useState<CustomerFilters>(CUSTOMER_FILTERS_DEFAULT);
+type CustomersViewProps = {
+  clientes: Customer[];
+  options: CustomerFilterOptions;
+};
+
+export function CustomersView({ clientes, options }: CustomersViewProps) {
+  const [filters, setFilters] = React.useState<CustomerFilters>(
+    CUSTOMER_FILTERS_DEFAULT,
+  );
   const [page, setPage] = React.useState(1);
 
-  const kpis = React.useMemo(() => buildCustomerKpis(MOCK_CUSTOMERS), []);
-  const filtered = React.useMemo(() => filterCustomers(MOCK_CUSTOMERS, filters), [filters]);
+  const kpis = React.useMemo(() => buildCustomerKpis(clientes), [clientes]);
+  const filtered = React.useMemo(
+    () => filterCustomers(clientes, filters),
+    [clientes, filters],
+  );
 
   const paginas = totalPages(filtered.length, POR_PAGINA);
   const paginaAtual = Math.min(page, paginas);
   const visiveis = paginate(filtered, paginaAtual, POR_PAGINA);
   const activeCount = countActiveFilters(filters);
 
-  function updateFilter<K extends keyof CustomerFilters>(key: K, value: CustomerFilters[K]) {
+  function updateFilter<K extends keyof CustomerFilters>(
+    key: K,
+    value: CustomerFilters[K],
+  ) {
     setFilters((current) => ({ ...current, [key]: value }));
     setPage(1);
   }
@@ -50,10 +67,7 @@ export function CustomersView() {
         titulo="Clientes"
         descricao="Base completa da loja, com preferências, histórico e segmentação."
       >
-        <Button className="gap-2">
-          <Plus className="size-4" />
-          Novo cliente
-        </Button>
+        <CreateCustomerDialog vendedores={options.vendedores} />
       </PageHeader>
 
       <section
@@ -88,12 +102,14 @@ export function CustomersView() {
           onChange={updateFilter}
           onReset={resetFilters}
           activeCount={activeCount}
+          options={options}
         />
       </div>
 
       <div className="mt-3">
         <CustomerFiltersPanel
           filters={filters}
+          options={options}
           onChange={updateFilter}
           onReset={resetFilters}
           activeCount={activeCount}
@@ -102,14 +118,18 @@ export function CustomersView() {
 
       <Card className="mt-4 gap-0 overflow-hidden py-0">
         {visiveis.length === 0 ? (
-          <EmptyState onReset={resetFilters} hasFilters={activeCount > 0 || filters.busca !== ""} />
+          <EmptyState
+            onReset={resetFilters}
+            hasFilters={activeCount > 0 || filters.busca !== ""}
+          />
         ) : (
           <CustomerTable customers={visiveis} />
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
           <span className="text-xs text-muted-foreground">
-            Mostrando {visiveis.length} de {formatNumber(filtered.length)} clientes
+            Mostrando {visiveis.length} de {formatNumber(filtered.length)}{" "}
+            clientes
           </span>
 
           <div className="flex items-center gap-2">
