@@ -86,7 +86,23 @@ export async function loginAction(
     };
   }
 
-  const activeStoreId = user.ultimaStoreId ?? primeiraLoja.id;
+  let activeStoreId = user.ultimaStoreId ?? primeiraLoja.id;
+
+  // Login por link de loja (/login/[storeId]): o storeId vem escondido no
+  // form. Só vale se pertencer à organização deste usuário — do contrário,
+  // é ignorado silenciosamente e o login segue pelo caminho normal.
+  const storeIdDoLink = String(formData.get("storeId") ?? "").trim();
+  let vindoDeLinkDeLoja = false;
+  if (storeIdDoLink) {
+    const lojaDoLink = await prisma.store.findFirst({
+      where: { id: storeIdDoLink, organizationId: user.organizationId, ativa: true },
+      select: { id: true },
+    });
+    if (lojaDoLink) {
+      activeStoreId = lojaDoLink.id;
+      vindoDeLinkDeLoja = true;
+    }
+  }
 
   const token = await assinarSessionToken({
     userId: user.id,
@@ -96,6 +112,15 @@ export async function loginAction(
 
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+
+  // Lembra a escolha feita pelo link pro próximo login (com ou sem link)
+  // já abrir na loja certa — mesmo comportamento de trocarLojaAction.
+  if (vindoDeLinkDeLoja) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { ultimaStoreId: activeStoreId },
+    });
+  }
 
   redirect("/dashboard");
 }

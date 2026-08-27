@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PdvPasswordForm } from "@/components/settings/pdv-password-form";
 import { StoreColorForm } from "@/components/settings/store-color-form";
+import { StoreLoginLinkButton } from "@/components/settings/store-login-link-button";
 import { StoreLogoForm } from "@/components/settings/store-logo-form";
 
 type PdvConfig = {
@@ -101,19 +102,26 @@ export function GeneralSettings({
         <h2 className="text-sm font-semibold">Lojas</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {workspace.stores.length} loja
-          {workspace.stores.length === 1 ? "" : "s"} nesta organização.
+          {workspace.stores.length === 1 ? "" : "s"} nesta organização. Cada
+          uma tem um link de acesso próprio — abre o login já com a loja
+          escolhida, útil pra deixar salvo no terminal dela.
         </p>
 
         <ul className="mt-4 space-y-2">
           {workspace.stores.map((loja) => (
             <li
               key={loja.id}
-              className="flex items-center justify-between rounded-lg border border-border px-3.5 py-2.5 text-sm"
+              className="flex items-center justify-between gap-3 rounded-lg border border-border px-3.5 py-2.5 text-sm"
             >
-              <span className="font-medium">{loja.nome}</span>
-              {loja.id === workspace.store.id && (
-                <span className="text-xs text-muted-foreground">Ativa</span>
-              )}
+              <span className="flex items-center gap-2 font-medium">
+                {loja.nome}
+                {loja.id === workspace.store.id && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Ativa
+                  </span>
+                )}
+              </span>
+              <StoreLoginLinkButton storeId={loja.id} />
             </li>
           ))}
         </ul>

@@ -118,6 +118,29 @@ export async function getSession(): Promise<Session | null> {
 }
 
 /**
+ * Nome da loja e da organização, pra exibir no link de login por loja
+ * (`/login/[storeId]`) — sem exigir sessão, já que é consultado antes do
+ * login. Loja inativa ou organização suspensa não resolve, o link vira um
+ * login comum sem pré-seleção.
+ */
+export async function buscarLojaParaLogin(
+  storeId: string,
+): Promise<{ id: string; nome: string; organizacaoNome: string } | null> {
+  const loja = await prisma.store.findUnique({
+    where: { id: storeId, ativa: true },
+    select: {
+      id: true,
+      nome: true,
+      organization: { select: { nome: true, status: true } },
+    },
+  });
+
+  if (!loja || loja.organization.status !== "ATIVA") return null;
+
+  return { id: loja.id, nome: loja.nome, organizacaoNome: loja.organization.nome };
+}
+
+/**
  * Igual a `getSession`, mas trata a ausência de sessão como erro.
  *
  * Use em qualquer caminho que leia ou grave dados: falhar aqui é o
