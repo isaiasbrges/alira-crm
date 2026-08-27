@@ -83,6 +83,18 @@ obrigatório no schema e o TypeScript cobra.
 `npm run verify:tenant` exercita essas regras, incluindo tentativas de forjar
 `organizationId`. Roda sem banco.
 
+## Deploy na Vercel
+
+Importe o repositório na Vercel e faça o deploy — os padrões do Next servem, não
+há nada para configurar.
+
+Variáveis de ambiente **não são necessárias agora**: as telas usam dados
+mockados e nada conecta no banco em tempo de execução. `DATABASE_URL` passa a
+ser obrigatória na etapa de persistência.
+
+O `postinstall` roda `prisma generate` no build. Sem ele, o cache de
+`node_modules` da Vercel serviria um Prisma Client ausente ou defasado.
+
 ## Estado atual
 
 Concluído: fundação, arquitetura, layout (sidebar colapsável, header, breadcrumb,
