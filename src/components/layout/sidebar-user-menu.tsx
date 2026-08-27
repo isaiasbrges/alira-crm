@@ -4,6 +4,7 @@ import { CircleUser, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
+import { logoutAction } from "@/lib/auth/actions";
 import type { CurrentUser } from "@/types/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -67,7 +68,7 @@ export function SidebarUserMenu({ user, collapsed }: SidebarUserMenuProps) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" disabled>
+        <DropdownMenuItem variant="destructive" onClick={() => logoutAction()}>
           <LogOut />
           Sair
         </DropdownMenuItem>

@@ -31,6 +31,11 @@ const eslintConfig = defineConfig([
       // as consultas cross-tenant do painel master vivem ali, com checagem de
       // papel explícita.
       "src/repositories/organizations.ts",
+      // A sessão nasce antes de existir organizationId para o guard aplicar:
+      // é aqui que se descobre a quem o cookie pertence. O login também
+      // precisa buscar o usuário pelo e-mail antes de saber a organização.
+      "src/lib/auth/session.ts",
+      "src/lib/auth/actions.ts",
     ],
     rules: {
       "no-restricted-imports": [

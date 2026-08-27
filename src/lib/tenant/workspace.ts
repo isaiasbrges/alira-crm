@@ -1,8 +1,9 @@
 import "server-only";
 
+import { redirect } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 
-import { requireSession } from "@/lib/auth/session";
+import { getSession } from "@/lib/auth/session";
 import type { CurrentUser, Workspace } from "@/types/navigation";
 
 const ROTULO_PAPEL: Record<UserRole, string> = {
@@ -22,12 +23,17 @@ function iniciais(nome: string): string {
  *
  * Roda no servidor. A sidebar e o header recebem isso por props, o que evita
  * que o cliente tenha qualquer palavra sobre qual organização está aberta.
+ *
+ * Sem sessão válida, redireciona para o login em vez de lançar erro — esta
+ * função só é chamada de layouts e páginas, onde um redirect é o
+ * comportamento certo.
  */
 export async function carregarWorkspace(): Promise<{
   workspace: Workspace;
   user: CurrentUser;
 }> {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) redirect("/login");
 
   const stores = session.stores.map((store) => ({ id: store.id, nome: store.nome }));
   const ativa = stores.find((store) => store.id === session.activeStoreId) ?? stores[0];

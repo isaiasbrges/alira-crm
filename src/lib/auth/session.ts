@@ -1,6 +1,11 @@
 import "server-only";
 
+import { cookies } from "next/headers";
 import type { UserRole } from "@prisma/client";
+
+import { prisma } from "@/lib/prisma";
+import { SESSION_COOKIE } from "@/lib/auth/cookie";
+import { verificarSessionToken } from "@/lib/auth/session-token";
 
 /**
  * Sessão autenticada.
@@ -38,39 +43,66 @@ export type Session = {
 };
 
 /**
- * Sessão de desenvolvimento.
- *
- * O login ainda não existe — é a próxima etapa. Enquanto isso, esta constante
- * mantém o app rodando sem banco e, mais importante, faz o resto do sistema
- * já consumir o formato definitivo: quando a autenticação real entrar, só
- * `getSession()` muda; nenhum repositório, action ou tela precisa ser tocado.
- */
-const DEV_SESSION: Session = {
-  user: {
-    id: "usr_dev_owner",
-    nome: "Isaias",
-    email: "isaias@aliracrm.com.br",
-    role: "OWNER",
-    organizationId: "org_alira_demo",
-  },
-  organization: {
-    id: "org_alira_demo",
-    nome: "Alira Demo",
-    slug: "alira-demo",
-  },
-  stores: [{ id: "store_principal", nome: "Loja Principal" }],
-  activeStoreId: "store_principal",
-};
-
-/**
  * Lê a sessão do usuário autenticado.
  *
- * Substituição futura: validar o cookie de sessão, carregar o `User` com sua
- * `Organization` e as `Store` permitidas, e resolver a loja ativa a partir de
- * `user.ultimaStoreId`. A assinatura permanece a mesma.
+ * O cookie carrega só o essencial (userId, organizationId, activeStoreId),
+ * assinado — nunca a sessão inteira. Usuário, organização e lojas são
+ * recarregados do banco a cada leitura, então uma alteração de papel ou uma
+ * loja desativada refletem na próxima requisição, sem esperar o cookie expirar.
+ *
+ * Usa o client cru do Prisma de propósito: aqui é onde o contexto de tenancy
+ * nasce, então ainda não existe organizationId de sessão para o guard aplicar.
  */
 export async function getSession(): Promise<Session | null> {
-  return DEV_SESSION;
+  const jar = await cookies();
+  const bruto = jar.get(SESSION_COOKIE)?.value;
+  if (!bruto) return null;
+
+  const payload = await verificarSessionToken(bruto);
+  if (!payload) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: {
+      id: true,
+      nome: true,
+      email: true,
+      role: true,
+      ativo: true,
+      organizationId: true,
+      organization: { select: { id: true, nome: true, slug: true, status: true } },
+    },
+  });
+
+  if (!user || !user.ativo || user.organization.status !== "ATIVA") return null;
+  // O token foi assinado para uma organização; se o usuário migrou de
+  // organização depois, o token velho não vale mais.
+  if (user.organizationId !== payload.organizationId) return null;
+
+  const stores = await prisma.store.findMany({
+    where: { organizationId: user.organizationId, ativa: true },
+    select: { id: true, nome: true },
+    orderBy: { nome: "asc" },
+  });
+
+  if (stores.length === 0) return null;
+
+  const activeStoreId = stores.some((store) => store.id === payload.activeStoreId)
+    ? payload.activeStoreId
+    : stores[0].id;
+
+  return {
+    user: {
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      role: user.role,
+      organizationId: user.organizationId,
+    },
+    organization: user.organization,
+    stores,
+    activeStoreId,
+  };
 }
 
 /**

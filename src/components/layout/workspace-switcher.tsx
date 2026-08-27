@@ -1,8 +1,11 @@
 "use client";
 
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Store as StoreIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { trocarLojaAction } from "@/lib/auth/actions";
 import type { Workspace } from "@/types/navigation";
 import {
   DropdownMenu,
@@ -29,6 +32,16 @@ function iniciais(nome: string): string {
 
 export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherProps) {
   const { organization, store, stores } = workspace;
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+
+  function selecionarLoja(storeId: string) {
+    if (storeId === store.id) return;
+    startTransition(async () => {
+      await trocarLojaAction(storeId);
+      router.refresh();
+    });
+  }
 
   return (
     <DropdownMenu>
@@ -62,16 +75,18 @@ export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherPro
         <DropdownMenuLabel>{organization.nome}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {stores.map((item) => (
-          <DropdownMenuItem key={item.id} className="gap-2">
+          <DropdownMenuItem
+            key={item.id}
+            className="gap-2"
+            disabled={pending}
+            onClick={() => selecionarLoja(item.id)}
+          >
             <StoreIcon className="size-4" />
             <span className="flex-1 truncate">{item.nome}</span>
             {item.id === store.id && <Check className="size-4" />}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        {/* Trocar de loja grava a escolha na sessão (User.ultimaStoreId) — é
-            assim que a próxima requisição sabe qual loja abrir. A ação entra
-            junto com a autenticação. */}
         <DropdownMenuItem disabled className="text-xs">
           Adicionar loja — em breve
         </DropdownMenuItem>
