@@ -77,7 +77,7 @@ export async function loginAction(
   // null = sem restrição (acessa toda loja ativa da organização).
   const permitidas = await idsDeLojaPermitidos(user.id, user.role);
 
-  const primeiraLoja = await prisma.store.findFirst({
+  const lojasDisponiveis = await prisma.store.findMany({
     where: {
       organizationId: user.organizationId,
       ativa: true,
@@ -87,32 +87,28 @@ export async function loginAction(
     orderBy: { nome: "asc" },
   });
 
-  if (!primeiraLoja) {
+  if (lojasDisponiveis.length === 0) {
     return {
       erro: "Nenhuma loja disponível para este usuário. Fale com o suporte.",
     };
   }
 
   let activeStoreId =
-    user.ultimaStoreId && (!permitidas || permitidas.has(user.ultimaStoreId))
+    user.ultimaStoreId &&
+    lojasDisponiveis.some((loja) => loja.id === user.ultimaStoreId)
       ? user.ultimaStoreId
-      : primeiraLoja.id;
+      : lojasDisponiveis[0].id;
 
   // Login por link de loja (/login/[storeId]): o storeId vem escondido no
-  // form. Só vale se pertencer à organização deste usuário e se ele tiver
-  // acesso a ela — do contrário, é ignorado silenciosamente e o login segue
-  // pelo caminho normal.
+  // form. Só vale se estiver entre as lojas disponíveis pra esse usuário —
+  // do contrário, é ignorado silenciosamente e o login segue pelo caminho
+  // normal. Vindo do link, a escolha já é explícita: pula a tela de escolha.
   const storeIdDoLink = String(formData.get("storeId") ?? "").trim();
-  let vindoDeLinkDeLoja = false;
-  if (storeIdDoLink && (!permitidas || permitidas.has(storeIdDoLink))) {
-    const lojaDoLink = await prisma.store.findFirst({
-      where: { id: storeIdDoLink, organizationId: user.organizationId, ativa: true },
-      select: { id: true },
-    });
-    if (lojaDoLink) {
-      activeStoreId = lojaDoLink.id;
-      vindoDeLinkDeLoja = true;
-    }
+  const vindoDeLinkDeLoja =
+    storeIdDoLink !== "" &&
+    lojasDisponiveis.some((loja) => loja.id === storeIdDoLink);
+  if (vindoDeLinkDeLoja) {
+    activeStoreId = storeIdDoLink;
   }
 
   const token = await assinarSessionToken({
@@ -131,6 +127,12 @@ export async function loginAction(
       where: { id: user.id },
       data: { ultimaStoreId: activeStoreId },
     });
+  }
+
+  // Mais de uma loja disponível e o login não veio de um link específico:
+  // pergunta qual loja gerenciar em vez de escolher por conta própria.
+  if (!vindoDeLinkDeLoja && lojasDisponiveis.length > 1) {
+    redirect("/escolher-loja");
   }
 
   redirect("/dashboard");
@@ -168,6 +170,39 @@ export async function trocarLojaAction(storeId: string): Promise<void> {
 
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+}
+
+/**
+ * Escolha feita na tela pós-login (`/escolher-loja`), mostrada quando a
+ * conta acessa mais de uma loja e o login não veio de um link específico
+ * (`/login/[storeId]`) — ali a escolha já era explícita.
+ *
+ * É `trocarLojaAction` com redirect: essa tela é uma página cheia, não um
+ * componente já dentro do CRM, então o próximo passo é navegar de verdade.
+ */
+export async function escolherLojaAction(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const storeId = String(formData.get("storeId") ?? "");
+  const lojaValida = session.stores.some((store) => store.id === storeId);
+  if (!lojaValida) redirect("/escolher-loja");
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { ultimaStoreId: storeId },
+  });
+
+  const token = await assinarSessionToken({
+    userId: session.user.id,
+    organizationId: session.organization.id,
+    activeStoreId: storeId,
+  });
+
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+
+  redirect("/dashboard");
 }
 
 function gerarSlug(nome: string): string {
