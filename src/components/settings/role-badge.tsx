@@ -1,6 +1,6 @@
 import type { UserRole } from "@prisma/client";
 
-import { ROLE_LABEL } from "@/mocks/team";
+import { ROLE_LABEL } from "@/types/team";
 import { Badge } from "@/components/ui/badge";
 
 const VARIANT: Record<UserRole, "accent" | "secondary" | "outline"> = {

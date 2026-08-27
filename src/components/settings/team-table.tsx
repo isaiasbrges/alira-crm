@@ -1,7 +1,7 @@
 import { UserPlus } from "lucide-react";
 
 import { initials } from "@/lib/format";
-import type { TeamMember } from "@/mocks/team";
+import type { TeamMember } from "@/types/team";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,9 @@ export function TeamTable({ team }: { team: TeamMember[] }) {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
           <h2 className="text-sm font-semibold">Usuários</h2>
-          <p className="text-xs text-muted-foreground">Quem tem acesso ao Alira CRM.</p>
+          <p className="text-xs text-muted-foreground">
+            Quem tem acesso ao Alira CRM.
+          </p>
         </div>
         <Button size="sm" className="gap-1.5" disabled>
           <UserPlus className="size-3.5" />
@@ -49,7 +51,9 @@ export function TeamTable({ team }: { team: TeamMember[] }) {
                   </Avatar>
                   <div>
                     <div className="text-sm font-medium">{membro.nome}</div>
-                    <div className="text-xs text-muted-foreground">{membro.email}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {membro.email}
+                    </div>
                   </div>
                 </div>
               </TableCell>
