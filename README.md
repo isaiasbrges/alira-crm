@@ -83,6 +83,59 @@ obrigatório no schema e o TypeScript cobra.
 `npm run verify:tenant` exercita essas regras, incluindo tentativas de forjar
 `organizationId`. Roda sem banco.
 
+## Integração WhatsApp (n8n + Evolution API)
+
+O envio/recebimento de WhatsApp de verdade passa por um fluxo no n8n, que fala
+com uma instância da Evolution API — não há chamada direta a nenhuma API do
+WhatsApp a partir do Alira CRM. As URLs e o token de cada organização ficam em
+**Configurações → Integrações**.
+
+### Recebendo mensagens (n8n → Alira)
+
+`POST /api/webhooks/whatsapp/{token}`
+
+O `{token}` identifica a organização e autentica a chamada — não é preciso
+cabeçalho extra. No n8n, o fluxo que reage a mensagens novas da Evolution API
+deve terminar com um nó HTTP Request apontando para essa URL; a tradução do
+payload bruto da Evolution API para o formato abaixo é feita ali (ex.: nó
+"Set"), o que mantém este app desacoplado do formato exato da Evolution API.
+
+Corpo esperado (JSON):
+
+```json
+{
+  "whatsapp": "5511999990000",
+  "texto": "Mensagem recebida do cliente",
+  "externalId": "id-opcional-da-mensagem-na-evolution-api"
+}
+```
+
+- `whatsapp` e `texto` são obrigatórios; requisição sem eles retorna `400`.
+- `externalId` é opcional e torna a chamada idempotente: reentregar o mesmo
+  evento (mesmo `externalId`) não duplica a mensagem.
+- Se o `whatsapp` não corresponde a nenhum cliente da organização, um cliente
+  novo é criado automaticamente (nome "Contato") na primeira loja ativa.
+- Token inválido retorna `401`.
+- Sucesso retorna `200` com `{ "ok": true }`.
+
+### Enviando mensagens (Alira → n8n)
+
+Ao responder um atendimento na tela de Atendimentos, além de gravar a
+mensagem no histórico, o Alira faz um `POST` best-effort para a URL do
+webhook n8n configurada em Configurações:
+
+```json
+{
+  "whatsapp": "5511999990000",
+  "texto": "Mensagem digitada pela equipe"
+}
+```
+
+Esse fluxo do n8n é quem deve chamar a Evolution API para o envio de fato. Se
+a URL não estiver configurada, ou o n8n estiver fora do ar, a mensagem
+continua sendo registrada normalmente no histórico — o disparo é best-effort
+e não bloqueia a tela.
+
 ## Deploy na Vercel
 
 Importe o repositório na Vercel e faça o deploy — os padrões do Next servem, não
