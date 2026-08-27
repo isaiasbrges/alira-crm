@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { carregarWorkspace } from "@/lib/tenant/workspace";
+import { PageHeader } from "@/components/layout/page-header";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
 
 export const metadata: Metadata = {
   title: "Configurações · Alira CRM",
 };
 
-export default function ConfiguracoesPage() {
+export default async function ConfiguracoesPage() {
+  const { workspace } = await carregarWorkspace();
+
   return (
-    <ModulePlaceholder
-      titulo="Configurações"
-      descricao="Dados da loja, usuários, vendedores e integrações."
-      proximosPassos={[
-        "Perfil da loja e identidade visual",
-        "Usuários, papéis e vendedores",
-        "Credenciais das integrações externas",
-      ]}
-    />
+    <>
+      <PageHeader titulo="Configurações" descricao="Dados da loja, usuários e notificações." />
+      <SettingsTabs workspace={workspace} />
+    </>
   );
 }
