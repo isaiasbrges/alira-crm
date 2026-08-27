@@ -36,6 +36,10 @@ const eslintConfig = defineConfig([
       // precisa buscar o usuário pelo e-mail antes de saber a organização.
       "src/lib/auth/session.ts",
       "src/lib/auth/actions.ts",
+      // Webhook inbound do n8n: quem chama não tem sessão de usuário, então
+      // não há organizationId de contexto para o guard aplicar. A organização
+      // vem do token da URL, verificado explicitamente aqui dentro.
+      "src/repositories/whatsapp-webhook.ts",
     ],
     rules: {
       "no-restricted-imports": [

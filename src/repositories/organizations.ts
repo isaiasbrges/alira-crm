@@ -1,5 +1,7 @@
 import "server-only";
 
+import crypto from "node:crypto";
+
 import { prisma } from "@/lib/prisma";
 import { getTenantContext, isPlatformAdmin } from "@/lib/tenant/context";
 import { getTenantDb } from "@/lib/tenant/db";
@@ -63,4 +65,63 @@ export async function listarOrganizacoesComoAdmin() {
     },
     orderBy: { createdAt: "desc" },
   });
+}
+
+/**
+ * Integração de WhatsApp (n8n + Evolution API) da organização da sessão.
+ *
+ * Gera o token do webhook inbound na primeira vez que a tela é aberta — antes
+ * disso não existe URL para mostrar em Configurações.
+ */
+export async function carregarIntegracaoWhatsapp(): Promise<{
+  n8nWebhookUrl: string | null;
+  token: string;
+}> {
+  const ctx = await getTenantContext();
+
+  const organizacao = await prisma.organization.findUniqueOrThrow({
+    where: { id: ctx.organizationId },
+    select: { n8nWebhookUrl: true, whatsappWebhookToken: true },
+  });
+
+  const token =
+    organizacao.whatsappWebhookToken ??
+    (await gerarTokenWebhook(ctx.organizationId));
+
+  return { n8nWebhookUrl: organizacao.n8nWebhookUrl, token };
+}
+
+async function gerarTokenWebhook(organizationId: string): Promise<string> {
+  const token = crypto.randomBytes(24).toString("hex");
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { whatsappWebhookToken: token },
+  });
+  return token;
+}
+
+/** Salva a URL do webhook n8n de saída (organização da sessão). */
+export async function salvarWebhookN8n(url: string | null): Promise<void> {
+  const ctx = await getTenantContext();
+
+  await prisma.organization.update({
+    where: { id: ctx.organizationId },
+    data: { n8nWebhookUrl: url },
+  });
+}
+
+/**
+ * URL do webhook n8n de saída, usada pelo disparo de mensagens.
+ *
+ * O organizationId aqui já foi resolvido pelo chamador (a partir da sessão) —
+ * esta função só existe para não espalhar `prisma` cru por outros repositórios.
+ */
+export async function n8nWebhookUrlDaOrganizacao(
+  organizationId: string,
+): Promise<string | null> {
+  const organizacao = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { n8nWebhookUrl: true },
+  });
+  return organizacao?.n8nWebhookUrl ?? null;
 }

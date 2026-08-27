@@ -37,6 +37,13 @@ model Organization {
   /// Marca a organização interna do time Alira, dona dos SUPER_ADMIN.
   interna Boolean            @default(false)
 
+  /// URL do webhook n8n para onde mensagens digitadas aqui são retransmitidas
+  /// (n8n encaminha para a Evolution API, que envia de fato pelo WhatsApp).
+  n8nWebhookUrl String? @db.VarChar(500)
+  /// Token que autentica o webhook inbound (n8n -> Alira): identifica a
+  /// organização sem exigir sessão de usuário, já que quem chama é o n8n.
+  whatsappWebhookToken String? @unique
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

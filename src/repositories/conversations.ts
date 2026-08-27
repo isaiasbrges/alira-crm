@@ -2,6 +2,7 @@ import "server-only";
 
 import { getTenantContext } from "@/lib/tenant/context";
 import { tenantDb } from "@/lib/tenant/db";
+import { n8nWebhookUrlDaOrganizacao } from "@/repositories/organizations";
 import type { Conversation, MessageDirection } from "@/types/conversation";
 
 const DIRECAO_PARA_TELA: Record<string, MessageDirection> = {
@@ -10,9 +11,9 @@ const DIRECAO_PARA_TELA: Record<string, MessageDirection> = {
 };
 
 /**
- * Uma "conversa" por cliente com pelo menos uma mensagem registrada — não há
- * disparo real ainda (fica para quando n8n + Evolution API entrarem), então
- * hoje isso é o histórico do que foi digitado aqui mesmo.
+ * Uma "conversa" por cliente com pelo menos uma mensagem registrada.
+ * Mensagens recebidas chegam pelo webhook do n8n; as enviadas daqui também
+ * são retransmitidas para lá (ver `enviarMensagemAtendimento`).
  */
 export async function listarAtendimentosTela(): Promise<Conversation[]> {
   const ctx = await getTenantContext();
@@ -76,8 +77,8 @@ export async function listarClientesSemConversa() {
 }
 
 /**
- * Registra uma mensagem enviada ao cliente. Grava no histórico — o envio de
- * verdade pelo WhatsApp acontece fora daqui até o disparo real existir.
+ * Registra uma mensagem enviada ao cliente e retransmite para o webhook n8n
+ * configurado, se houver — é o n8n quem manda de fato pela Evolution API.
  */
 export async function enviarMensagemAtendimento(
   clienteId: string,
@@ -85,6 +86,11 @@ export async function enviarMensagemAtendimento(
 ): Promise<void> {
   const ctx = await getTenantContext();
   const db = tenantDb(ctx);
+
+  const cliente = await db.customer.findUniqueOrThrow({
+    where: { id: clienteId },
+    select: { whatsapp: true },
+  });
 
   await db.whatsappMessage.create({
     data: {
@@ -94,6 +100,32 @@ export async function enviarMensagemAtendimento(
       corpo: texto,
     },
   });
+
+  await despacharParaN8n(ctx.organizationId, cliente.whatsapp, texto);
+}
+
+/**
+ * Best-effort: se o n8n estiver fora do ar ou a URL não estiver configurada,
+ * a mensagem já ficou registrada acima — não é motivo para falhar a tela.
+ */
+async function despacharParaN8n(
+  organizationId: string,
+  whatsapp: string,
+  texto: string,
+): Promise<void> {
+  const webhookUrl = await n8nWebhookUrlDaOrganizacao(organizationId);
+  if (!webhookUrl) return;
+
+  try {
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ whatsapp, texto }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // Falha de rede/timeout no n8n não deve quebrar o atendimento.
+  }
 }
 
 export async function marcarAtendimentoResolvido(
