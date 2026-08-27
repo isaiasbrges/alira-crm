@@ -7,7 +7,6 @@ import { formatNumber } from "@/lib/format";
 import { paginate, totalPages } from "@/lib/pagination";
 import type { Product, ProductFilters } from "@/types/product";
 import { PRODUCT_FILTERS_DEFAULT } from "@/types/product";
-import { MOCK_PRODUCTS } from "@/mocks/products";
 import { buildProductKpis, filterProducts } from "@/services/product-metrics";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,19 +18,31 @@ import { ProductTable } from "@/components/products/product-table";
 
 const POR_PAGINA = 8;
 
-export function ProductsView() {
-  const [products, setProducts] = React.useState<Product[]>(MOCK_PRODUCTS);
-  const [filters, setFilters] = React.useState<ProductFilters>(PRODUCT_FILTERS_DEFAULT);
+type ProductsViewProps = {
+  produtos: Product[];
+  categorias: string[];
+};
+
+export function ProductsView({ produtos, categorias }: ProductsViewProps) {
+  const [filters, setFilters] = React.useState<ProductFilters>(
+    PRODUCT_FILTERS_DEFAULT,
+  );
   const [page, setPage] = React.useState(1);
 
-  const kpis = React.useMemo(() => buildProductKpis(products), [products]);
-  const filtered = React.useMemo(() => filterProducts(products, filters), [products, filters]);
+  const kpis = React.useMemo(() => buildProductKpis(produtos), [produtos]);
+  const filtered = React.useMemo(
+    () => filterProducts(produtos, filters),
+    [produtos, filters],
+  );
 
   const paginas = totalPages(filtered.length, POR_PAGINA);
   const paginaAtual = Math.min(page, paginas);
   const visiveis = paginate(filtered, paginaAtual, POR_PAGINA);
 
-  function updateFilter<K extends keyof ProductFilters>(key: K, value: ProductFilters[K]) {
+  function updateFilter<K extends keyof ProductFilters>(
+    key: K,
+    value: ProductFilters[K],
+  ) {
     setFilters((current) => ({ ...current, [key]: value }));
     setPage(1);
   }
@@ -42,14 +53,25 @@ export function ProductsView() {
         titulo="Produtos"
         descricao="Catálogo, categorias e estoque por tamanho e cor."
       >
-        <NewProductDialog onCreate={(produto) => setProducts((atual) => [produto, ...atual])} />
+        <NewProductDialog categorias={categorias} />
       </PageHeader>
 
-      <section aria-label="Indicadores de produtos" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section
+        aria-label="Indicadores de produtos"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+      >
         <SummaryCard label="Total de produtos" value={kpis.total} />
         <SummaryCard label="Ativos" value={kpis.ativos} />
-        <SummaryCard label="Estoque baixo" value={kpis.estoqueBaixo} tone="warning" />
-        <SummaryCard label="Esgotados" value={kpis.esgotados} tone="destructive" />
+        <SummaryCard
+          label="Estoque baixo"
+          value={kpis.estoqueBaixo}
+          tone="warning"
+        />
+        <SummaryCard
+          label="Esgotados"
+          value={kpis.esgotados}
+          tone="destructive"
+        />
       </section>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -66,7 +88,11 @@ export function ProductsView() {
       </div>
 
       <div className="mt-3">
-        <ProductFiltersBar filters={filters} onChange={updateFilter} />
+        <ProductFiltersBar
+          filters={filters}
+          onChange={updateFilter}
+          categorias={categorias}
+        />
       </div>
 
       <Card className="mt-4 gap-0 overflow-hidden py-0">
@@ -78,7 +104,8 @@ export function ProductsView() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
           <span className="text-xs text-muted-foreground">
-            Mostrando {visiveis.length} de {formatNumber(filtered.length)} produtos
+            Mostrando {visiveis.length} de {formatNumber(filtered.length)}{" "}
+            produtos
           </span>
 
           <div className="flex items-center gap-2">
@@ -148,7 +175,9 @@ function EmptyState() {
       </span>
       <div>
         <p className="text-sm font-medium">Nenhum produto encontrado</p>
-        <p className="mt-1 text-sm text-muted-foreground">Ajuste os filtros para ampliar a busca.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Ajuste os filtros para ampliar a busca.
+        </p>
       </div>
     </div>
   );

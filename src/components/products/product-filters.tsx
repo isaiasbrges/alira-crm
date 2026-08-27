@@ -1,5 +1,4 @@
 import type { ProductFilters } from "@/types/product";
-import { PRODUCT_CATEGORIES } from "@/mocks/products";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -11,10 +10,20 @@ import {
 
 type ProductFiltersBarProps = {
   filters: ProductFilters;
-  onChange: <K extends keyof ProductFilters>(key: K, value: ProductFilters[K]) => void;
+  onChange: <K extends keyof ProductFilters>(
+    key: K,
+    value: ProductFilters[K],
+  ) => void;
+  categorias: string[];
 };
 
-function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+function FilterField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-w-36 flex-1">
       <Label className="mb-1.5 text-xs text-muted-foreground">{label}</Label>
@@ -23,17 +32,24 @@ function FilterField({ label, children }: { label: string; children: React.React
   );
 }
 
-export function ProductFiltersBar({ filters, onChange }: ProductFiltersBarProps) {
+export function ProductFiltersBar({
+  filters,
+  onChange,
+  categorias,
+}: ProductFiltersBarProps) {
   return (
     <div className="flex flex-wrap gap-3 rounded-2xl border border-border bg-card p-4">
       <FilterField label="Categoria">
-        <Select value={filters.categoria} onValueChange={(value) => onChange("categoria", value)}>
+        <Select
+          value={filters.categoria}
+          onValueChange={(value) => onChange("categoria", value)}
+        >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas</SelectItem>
-            {PRODUCT_CATEGORIES.map((categoria) => (
+            {categorias.map((categoria) => (
               <SelectItem key={categoria} value={categoria}>
                 {categoria}
               </SelectItem>
@@ -45,7 +61,9 @@ export function ProductFiltersBar({ filters, onChange }: ProductFiltersBarProps)
       <FilterField label="Status">
         <Select
           value={filters.status}
-          onValueChange={(value) => onChange("status", value as ProductFilters["status"])}
+          onValueChange={(value) =>
+            onChange("status", value as ProductFilters["status"])
+          }
         >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
@@ -62,7 +80,9 @@ export function ProductFiltersBar({ filters, onChange }: ProductFiltersBarProps)
       <FilterField label="Estoque">
         <Select
           value={filters.estoque}
-          onValueChange={(value) => onChange("estoque", value as ProductFilters["estoque"])}
+          onValueChange={(value) =>
+            onChange("estoque", value as ProductFilters["estoque"])
+          }
         >
           <SelectTrigger size="sm" className="w-full">
             <SelectValue />
