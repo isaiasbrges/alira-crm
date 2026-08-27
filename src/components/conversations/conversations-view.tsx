@@ -1,58 +1,73 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 
 import type { Conversation } from "@/types/conversation";
-import { MOCK_CONVERSATIONS } from "@/mocks/conversations";
+import {
+  enviarMensagemAction,
+  marcarResolvidaAction,
+} from "@/app/(crm)/atendimentos/actions";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { ConversationList } from "@/components/conversations/conversation-list";
 import { ConversationThread } from "@/components/conversations/conversation-thread";
+import { NewConversationDialog } from "@/components/conversations/new-conversation-dialog";
 
-export function ConversationsView() {
-  const [conversations, setConversations] = React.useState<Conversation[]>(MOCK_CONVERSATIONS);
+type ConversationsViewProps = {
+  conversations: Conversation[];
+  clientesSemConversa: { id: string; nome: string }[];
+};
+
+export function ConversationsView({
+  conversations,
+  clientesSemConversa,
+}: ConversationsViewProps) {
+  const router = useRouter();
   // Começa sem conversa selecionada: no mobile isso mostra a lista primeiro
   // (o padrão esperado), e no desktop mostra o placeholder de seleção — não
   // dá pra ter os dois comportamentos com uma seleção padrão fixa.
   const [ativaId, setAtivaId] = React.useState<string | null>(null);
+  const [, startTransition] = React.useTransition();
 
-  const ativa = conversations.find((conversa) => conversa.id === ativaId) ?? null;
+  const ativa =
+    conversations.find((conversa) => conversa.id === ativaId) ?? null;
 
   function enviarMensagem(texto: string) {
     if (!ativaId) return;
-    setConversations((atual) =>
-      atual.map((conversa) =>
-        conversa.id === ativaId
-          ? {
-              ...conversa,
-              mensagens: [
-                ...conversa.mensagens,
-                {
-                  id: `m-${Date.now()}`,
-                  direcao: "enviada",
-                  texto,
-                  horario: new Date().toISOString(),
-                },
-              ],
-            }
-          : conversa
-      )
-    );
+    startTransition(async () => {
+      await enviarMensagemAction(ativaId, texto);
+      router.refresh();
+    });
   }
 
   function marcarResolvida() {
     if (!ativaId) return;
-    setConversations((atual) =>
-      atual.map((conversa) =>
-        conversa.id === ativaId ? { ...conversa, status: "resolvida" } : conversa
-      )
-    );
+    startTransition(async () => {
+      await marcarResolvidaAction(ativaId);
+      router.refresh();
+    });
+  }
+
+  function aoCriarConversa(clienteId: string) {
+    setAtivaId(clienteId);
+    router.refresh();
   }
 
   return (
     <>
-      <PageHeader titulo="Atendimentos" descricao="Conversas de WhatsApp com os clientes." />
+      <PageHeader
+        titulo="Atendimentos"
+        descricao="Conversas de WhatsApp com os clientes."
+      >
+        {clientesSemConversa.length > 0 && (
+          <NewConversationDialog
+            clientes={clientesSemConversa}
+            onCreated={aoCriarConversa}
+          />
+        )}
+      </PageHeader>
 
       <Card className="grid h-[calc(100dvh-13rem)] min-h-[420px] grid-cols-1 gap-0 overflow-hidden p-0 lg:grid-cols-[320px_1fr]">
         <div

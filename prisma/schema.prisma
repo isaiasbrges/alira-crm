@@ -180,6 +180,10 @@ model Customer {
 
   // Consentimento vigente para campanhas de marketing (detalhe fica em Consent).
   consentimentoWhatsapp Boolean @default(false)
+  /// Atendimento (thread de WhatsApp) marcado como resolvido. Só existe uma
+  /// thread por cliente hoje — quando houver disparo real, isso pode virar
+  /// uma entidade própria.
+  atendimentoResolvido  Boolean @default(false)
 
   // Agregados desnormalizados, recalculados a cada venda para leitura barata.
   ultimaCompra DateTime?
