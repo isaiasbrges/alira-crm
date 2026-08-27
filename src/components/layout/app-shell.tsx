@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { NAV_SECTIONS } from "@/lib/navigation";
-import { MOCK_CURRENT_USER, MOCK_WORKSPACE } from "@/mocks/workspace";
+import type { CurrentUser, Workspace } from "@/types/navigation";
 import { useCommandShortcut } from "@/hooks/use-command-shortcut";
 import { DashboardSidebar } from "@/components/ui/dashboard-sidebar";
 import { GlobalSearch } from "@/components/layout/global-search";
@@ -12,7 +12,14 @@ import { Header } from "@/components/layout/header";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+type AppShellProps = {
+  children: React.ReactNode;
+  /** Resolvido no servidor a partir da sessão; o cliente só exibe. */
+  workspace: Workspace;
+  user: CurrentUser;
+};
+
+export function AppShell({ children, workspace, user }: AppShellProps) {
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -31,8 +38,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <DashboardSidebar
             sections={NAV_SECTIONS}
-            workspace={MOCK_WORKSPACE}
-            user={MOCK_CURRENT_USER}
+            workspace={workspace}
+            user={user}
             collapsed={collapsed}
             onToggleCollapsed={() => setCollapsed((value) => !value)}
             onOpenSearch={openSearch}
@@ -46,8 +53,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SheetHeader>
             <DashboardSidebar
               sections={NAV_SECTIONS}
-              workspace={MOCK_WORKSPACE}
-              user={MOCK_CURRENT_USER}
+              workspace={workspace}
+              user={user}
               collapsed={false}
               onToggleCollapsed={() => undefined}
               onOpenSearch={() => {
@@ -62,7 +69,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <Header
-            workspaceLabel={MOCK_WORKSPACE.organization.nome}
+            workspaceLabel={workspace.organization.nome}
+            user={user}
             onOpenMobileNav={() => setMobileNavOpen(true)}
             onOpenSearch={openSearch}
           />

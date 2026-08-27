@@ -8,36 +8,70 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
-// Tenancy — uma organização por enquanto, modelada para virar multi-loja/SaaS.
+// Tenancy
+//
+// Regra do sistema: toda tabela de negócio carrega organizationId, sem exceção.
+// A uniformidade é proposital — é ela que permite ao guard de tenancy
+// (src/lib/tenant/db.ts) aplicar o filtro sozinho, sem lista de exceções que
+// alguém possa esquecer de atualizar ao criar um modelo novo.
+//
+// storeId aparece só onde o dado pertence a uma loja específica. Cadastros que
+// a organização compartilha entre lojas (categorias, tags, usuários) ficam
+// apenas com organizationId.
 // ---------------------------------------------------------------------------
 
+enum OrganizationStatus {
+  ATIVA
+  SUSPENSA
+  CANCELADA
+}
+
 model Organization {
-  id        String   @id @default(cuid())
+  id        String             @id @default(cuid())
   nome      String
-  slug      String   @unique
+  slug      String             @unique
+  status    OrganizationStatus @default(ATIVA)
+  /// Rótulo do plano contratado. Sem cobrança associada: existe para o painel
+  /// master exibir e segmentar; billing é decisão de outra fase.
+  plano     String?
+  /// Marca a organização interna do time Alira, dona dos SUPER_ADMIN.
+  interna   Boolean            @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stores       Store[]
-  users        User[]
-  customers    Customer[]
-  categories   Category[]
-  products     Product[]
-  sales        Sale[]
-  tags         Tag[]
-  tasks        Task[]
-  campaigns    Campaign[]
-  consents     Consent[]
-  activityLogs ActivityLog[]
+  stores              Store[]
+  users               User[]
+  sellers             Seller[]
+  customers           Customer[]
+  customerPreferences CustomerPreference[]
+  tags                Tag[]
+  customerTags        CustomerTag[]
+  categories          Category[]
+  products            Product[]
+  productVariants     ProductVariant[]
+  sales               Sale[]
+  saleItems           SaleItem[]
+  exchanges           Exchange[]
+  exchangeItems       ExchangeItem[]
+  tasks               Task[]
+  segments            Segment[]
+  campaigns           Campaign[]
+  campaignRecipients  CampaignRecipient[]
+  whatsappMessages    WhatsappMessage[]
+  consents            Consent[]
+  suppressionEntries  SuppressionEntry[]
+  activityLogs        ActivityLog[]
 
   @@map("organizations")
 }
 
 model Store {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   nome           String
   slug           String
+  ativa          Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -48,9 +82,11 @@ model Store {
   products     Product[]
   sales        Sale[]
   tasks        Task[]
+  segments     Segment[]
   campaigns    Campaign[]
 
   @@unique([organizationId, slug])
+  @@index([organizationId])
   @@map("stores")
 }
 
@@ -59,9 +95,14 @@ model Store {
 // ---------------------------------------------------------------------------
 
 enum UserRole {
-  ADMIN
-  GERENTE
-  VENDEDOR
+  /// Time Alira. Enxerga o painel master; não é dono de nenhuma loja cliente.
+  SUPER_ADMIN
+  /// Dono da empresa cliente.
+  OWNER
+  /// Gerente de loja.
+  MANAGER
+  /// Vendedor.
+  SELLER
 }
 
 model User {
@@ -70,8 +111,11 @@ model User {
   nome           String
   email          String   @unique
   senhaHash      String
-  role           UserRole @default(VENDEDOR)
+  role           UserRole @default(SELLER)
   ativo          Boolean  @default(true)
+
+  /// Loja preenchida no último acesso, para reabrir o app onde o usuário parou.
+  ultimaStoreId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -85,21 +129,24 @@ model User {
 }
 
 model Seller {
-  id      String  @id @default(cuid())
-  storeId String
-  userId  String? @unique
-  nome    String
-  ativo   Boolean @default(true)
+  id             String  @id @default(cuid())
+  organizationId String
+  storeId        String
+  userId         String? @unique
+  nome           String
+  ativo          Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  customers Customer[]
-  sales     Sale[]
-  tasks     Task[]     @relation("TaskResponsavel")
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customers    Customer[]
+  sales        Sale[]
+  tasks        Task[]       @relation("TaskResponsavel")
 
+  @@index([organizationId])
   @@index([storeId])
   @@map("sellers")
 }
@@ -133,17 +180,17 @@ model Customer {
   consentimentoWhatsapp Boolean @default(false)
 
   // Agregados desnormalizados, recalculados a cada venda para leitura barata.
-  ultimaCompra     DateTime?
-  totalGasto       Decimal   @default(0) @db.Decimal(10, 2)
-  ticketMedio      Decimal   @default(0) @db.Decimal(10, 2)
-  totalCompras     Int       @default(0)
+  ultimaCompra DateTime?
+  totalGasto   Decimal   @default(0) @db.Decimal(10, 2)
+  ticketMedio  Decimal   @default(0) @db.Decimal(10, 2)
+  totalCompras Int       @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  store        Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  seller       Seller?              @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  seller       Seller?             @relation(fields: [sellerId], references: [id], onDelete: SetNull)
   preferences  CustomerPreference?
   tags         CustomerTag[]
   sales        Sale[]
@@ -153,15 +200,18 @@ model Customer {
   messages     WhatsappMessage[]
   consents     Consent[]
 
+  // O whatsapp identifica o cliente dentro da organização, não globalmente:
+  // o mesmo número pode ser cliente de duas empresas diferentes.
+  @@unique([organizationId, whatsapp])
   @@index([organizationId, storeId])
-  @@index([storeId, status])
-  @@index([whatsapp])
+  @@index([organizationId, status])
   @@map("customers")
 }
 
 model CustomerPreference {
-  id         String @id @default(cuid())
-  customerId String @unique
+  id             String @id @default(cuid())
+  organizationId String
+  customerId     String @unique
 
   tamanhoCamiseta String?
   tamanhoCalca    String?
@@ -169,21 +219,23 @@ model CustomerPreference {
 
   estilo String?
   // Listas curtas de texto livre; JSON evita tabelas auxiliares no MVP.
-  cores             Json?
-  marcas            Json?
+  cores               Json?
+  marcas              Json?
   categoriasFavoritas Json?
-  observacoes       String? @db.Text
+  observacoes         String? @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId])
   @@map("customer_preferences")
 }
 
 model Tag {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   label          String
   cor            String?
@@ -198,15 +250,18 @@ model Tag {
 }
 
 model CustomerTag {
-  customerId String
-  tagId      String
+  organizationId String
+  customerId     String
+  tagId          String
 
   createdAt DateTime @default(now())
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([customerId, tagId])
+  @@index([organizationId])
   @@index([tagId])
   @@map("customer_tags")
 }
@@ -238,16 +293,16 @@ enum ProductStatus {
 }
 
 model Product {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   storeId        String
   categoryId     String?
 
-  nome     String
-  sku      String
-  colecao  String?
-  preco    Decimal       @db.Decimal(10, 2)
-  status   ProductStatus @default(ATIVO)
+  nome    String
+  sku     String
+  colecao String?
+  preco   Decimal       @db.Decimal(10, 2)
+  status  ProductStatus @default(ATIVO)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -258,13 +313,15 @@ model Product {
   variants     ProductVariant[]
 
   @@unique([organizationId, sku])
-  @@index([storeId, status])
+  @@index([organizationId, storeId])
+  @@index([organizationId, status])
   @@map("products")
 }
 
 model ProductVariant {
-  id        String @id @default(cuid())
-  productId String
+  id             String @id @default(cuid())
+  organizationId String
+  productId      String
 
   sku     String
   tamanho String
@@ -276,12 +333,16 @@ model ProductVariant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  saleItems SaleItem[]
-  exchanges ExchangeItem[]
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  saleItems    SaleItem[]
+  exchanges    ExchangeItem[]
 
   @@unique([productId, tamanho, cor])
-  @@unique([sku])
+  // SKU único por organização, nunca global: duas empresas podem usar o mesmo
+  // código de peça sem uma bloquear o cadastro da outra.
+  @@unique([organizationId, sku])
+  @@index([organizationId])
   @@map("product_variants")
 }
 
@@ -305,19 +366,19 @@ enum PaymentMethod {
 }
 
 model Sale {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   storeId        String
   customerId     String?
   sellerId       String?
 
-  numero        Int
-  status        SaleStatus    @default(RASCUNHO)
-  subtotal      Decimal       @default(0) @db.Decimal(10, 2)
-  desconto      Decimal       @default(0) @db.Decimal(10, 2)
-  total         Decimal       @default(0) @db.Decimal(10, 2)
+  numero         Int
+  status         SaleStatus     @default(RASCUNHO)
+  subtotal       Decimal        @default(0) @db.Decimal(10, 2)
+  desconto       Decimal        @default(0) @db.Decimal(10, 2)
+  total          Decimal        @default(0) @db.Decimal(10, 2)
   formaPagamento PaymentMethod?
-  observacao    String?       @db.Text
+  observacao     String?        @db.Text
 
   // Preenchido quando a venda é atribuída a uma campanha (receita originada).
   campaignId String?
@@ -335,16 +396,18 @@ model Sale {
   exchanges    Exchange[]
 
   @@unique([storeId, numero])
-  @@index([storeId, status])
+  @@index([organizationId, storeId])
+  @@index([organizationId, status])
   @@index([customerId])
   @@index([campaignId])
   @@map("sales")
 }
 
 model SaleItem {
-  id        String @id @default(cuid())
-  saleId    String
-  variantId String
+  id             String @id @default(cuid())
+  organizationId String
+  saleId         String
+  variantId      String
 
   quantidade    Int
   precoUnitario Decimal @db.Decimal(10, 2)
@@ -353,9 +416,11 @@ model SaleItem {
 
   createdAt DateTime @default(now())
 
-  sale    Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sale         Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variant      ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
 
+  @@index([organizationId])
   @@index([saleId])
   @@index([variantId])
   @@map("sale_items")
@@ -368,9 +433,10 @@ enum ExchangeStatus {
 }
 
 model Exchange {
-  id         String @id @default(cuid())
-  saleId     String
-  customerId String?
+  id             String  @id @default(cuid())
+  organizationId String
+  saleId         String
+  customerId     String?
 
   status    ExchangeStatus @default(ABERTA)
   motivo    String?        @db.Text
@@ -379,25 +445,30 @@ model Exchange {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sale     Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  customer Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  items    ExchangeItem[]
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sale         Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  customer     Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items        ExchangeItem[]
 
+  @@index([organizationId])
   @@index([saleId])
   @@map("exchanges")
 }
 
 model ExchangeItem {
-  id         String @id @default(cuid())
-  exchangeId String
-  variantId  String
+  id             String @id @default(cuid())
+  organizationId String
+  exchangeId     String
+  variantId      String
 
   quantidade Int
   devolucao  Boolean @default(true)
 
-  exchange Exchange       @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
-  variant  ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  exchange     Exchange       @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+  variant      ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
 
+  @@index([organizationId])
   @@index([exchangeId])
   @@map("exchange_items")
 }
@@ -419,18 +490,18 @@ enum TaskPriority {
 }
 
 model Task {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   storeId        String
   customerId     String?
   sellerId       String?
   criadoPorId    String?
 
-  titulo    String
-  descricao String?      @db.Text
-  status    TaskStatus   @default(PENDENTE)
+  titulo     String
+  descricao  String?      @db.Text
+  status     TaskStatus   @default(PENDENTE)
   prioridade TaskPriority @default(MEDIA)
-  venceEm   DateTime?
+  venceEm    DateTime?
 
   concluidaEm DateTime?
   createdAt   DateTime  @default(now())
@@ -442,9 +513,36 @@ model Task {
   seller       Seller?      @relation("TaskResponsavel", fields: [sellerId], references: [id], onDelete: SetNull)
   criadoPor    User?        @relation("TaskCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
 
-  @@index([storeId, status])
+  @@index([organizationId, storeId])
+  @@index([organizationId, status])
   @@index([customerId])
   @@map("tasks")
+}
+
+/// Segmento salvo — o conjunto de regras, não a lista de clientes.
+/// A lista é resolvida na hora do uso, para nunca ficar defasada.
+model Segment {
+  id             String  @id @default(cuid())
+  organizationId String
+  /// Nulo quando o segmento vale para todas as lojas da organização.
+  storeId        String?
+
+  nome      String
+  descricao String? @db.Text
+  /// Árvore de condições com AND/OR. O construtor visual chega em fase futura;
+  /// o formato fica aqui para não travar o schema quando ele chegar.
+  regras    Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store?       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  campaigns    Campaign[]
+
+  @@index([organizationId])
+  @@index([storeId])
+  @@map("segments")
 }
 
 enum CampaignStatus {
@@ -457,14 +555,16 @@ enum CampaignStatus {
 }
 
 model Campaign {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   storeId        String
+  segmentId      String?
 
-  nome           String
-  status         CampaignStatus @default(RASCUNHO)
-  templateNome   String?
-  // Regras de segmentação (AND/OR) serializadas; o builder chega em fase futura.
+  nome         String
+  status       CampaignStatus @default(RASCUNHO)
+  templateNome String?
+  /// Cópia das regras no momento do disparo. Preserva o histórico mesmo que o
+  /// segmento de origem seja editado depois.
   segmentoRegras Json?
   agendadaPara   DateTime?
   enviadaEm      DateTime?
@@ -474,11 +574,13 @@ model Campaign {
 
   organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   store        Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  segment      Segment?            @relation(fields: [segmentId], references: [id], onDelete: SetNull)
   recipients   CampaignRecipient[]
   messages     WhatsappMessage[]
   sales        Sale[]
 
-  @@index([storeId, status])
+  @@index([organizationId, storeId])
+  @@index([organizationId, status])
   @@map("campaigns")
 }
 
@@ -493,26 +595,29 @@ enum RecipientStatus {
 }
 
 model CampaignRecipient {
-  id         String @id @default(cuid())
-  campaignId String
-  customerId String
+  id             String @id @default(cuid())
+  organizationId String
+  campaignId     String
+  customerId     String
 
   status RecipientStatus @default(QUEUED)
   erro   String?         @db.Text
 
-  enviadoEm   DateTime?
-  entregueEm  DateTime?
-  lidoEm      DateTime?
+  enviadoEm    DateTime?
+  entregueEm   DateTime?
+  lidoEm       DateTime?
   respondidoEm DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  campaign Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  customer Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  messages WhatsappMessage[]
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaign     Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer     Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  messages     WhatsappMessage[]
 
   @@unique([campaignId, customerId])
+  @@index([organizationId])
   @@index([status])
   @@map("campaign_recipients")
 }
@@ -523,10 +628,11 @@ enum MessageDirection {
 }
 
 model WhatsappMessage {
-  id          String  @id @default(cuid())
-  customerId  String?
-  campaignId  String?
-  recipientId String?
+  id             String  @id @default(cuid())
+  organizationId String
+  customerId     String?
+  campaignId     String?
+  recipientId    String?
 
   direction MessageDirection
   // ID da mensagem na Meta Cloud API, usado para casar webhooks de status.
@@ -539,10 +645,12 @@ model WhatsappMessage {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  customer  Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  campaign  Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  recipient CampaignRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  campaign     Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  recipient    CampaignRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
 
+  @@index([organizationId])
   @@index([customerId])
   @@index([campaignId])
   @@map("whatsapp_messages")
@@ -563,31 +671,36 @@ model Consent {
   organizationId String
   customerId     String
 
-  canal         ConsentChannel @default(WHATSAPP)
-  concedido     Boolean
-  origem        String?
-  versaoTexto   String?
-  ip            String?        @db.VarChar(45)
-  concedidoEm   DateTime?
-  revogadoEm    DateTime?
+  canal       ConsentChannel @default(WHATSAPP)
+  concedido   Boolean
+  origem      String?
+  versaoTexto String?
+  ip          String?        @db.VarChar(45)
+  concedidoEm DateTime?
+  revogadoEm  DateTime?
 
   createdAt DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([organizationId])
   @@index([customerId, canal])
   @@map("consents")
 }
 
 /// Bloqueio definitivo — quem está aqui nunca entra em campanha de marketing.
+/// O bloqueio vale dentro da organização: sair da lista de uma empresa não
+/// afeta as outras.
 model SuppressionEntry {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   whatsapp       String
   motivo         String?
 
   createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, whatsapp])
   @@map("suppression_list")

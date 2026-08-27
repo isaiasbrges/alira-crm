@@ -4,7 +4,6 @@ import { Check, ChevronsUpDown, Store as StoreIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/types/navigation";
-import { MOCK_STORES } from "@/mocks/workspace";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +19,7 @@ type WorkspaceSwitcherProps = {
 };
 
 export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherProps) {
-  const { organization, store } = workspace;
+  const { organization, store, stores } = workspace;
 
   return (
     <DropdownMenu>
@@ -53,7 +52,7 @@ export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherPro
       <DropdownMenuContent align="start" className="w-60">
         <DropdownMenuLabel>{organization.nome}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {MOCK_STORES.map((item) => (
+        {stores.map((item) => (
           <DropdownMenuItem key={item.id} className="gap-2">
             <StoreIcon className="size-4" />
             <span className="flex-1 truncate">{item.nome}</span>
@@ -61,6 +60,9 @@ export function WorkspaceSwitcher({ workspace, collapsed }: WorkspaceSwitcherPro
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
+        {/* Trocar de loja grava a escolha na sessão (User.ultimaStoreId) —
+            é assim que a próxima requisição sabe qual loja abrir. A ação
+            entra junto com a autenticação. */}
         <DropdownMenuItem disabled className="text-xs">
           Adicionar loja — em breve
         </DropdownMenuItem>

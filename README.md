@@ -38,12 +38,19 @@ A aplicação sobe em `http://localhost:4310` e redireciona para `/dashboard`.
 | `npm run build` | Build de produção |
 | `npm run start` | Sobe o build de produção |
 | `npm run lint` | ESLint |
+| `npm run verify:tenant` | Verifica o isolamento entre organizações (não usa banco) |
+| `npm run db:migrate` | Aplica as migrations em desenvolvimento |
+| `npm run db:seed` | Cria a organização padrão, a loja e os usuários iniciais |
 
 ## Estrutura
 
 ```txt
-prisma/schema.prisma     modelo de dados (multi-loja desde a origem)
+prisma/schema.prisma     modelo de dados multi-tenant
+prisma/seed.ts           organização padrão, loja e usuários iniciais
 src/app/(crm)/           rotas do CRM, todas dentro do AppShell
+src/lib/auth/            sessão — única origem legítima do organizationId
+src/lib/tenant/          guard de isolamento, contexto e workspace
+src/repositories/        acesso a dados; ninguém fala com o Prisma fora daqui
 src/components/ui/       primitivos shadcn/ui + dashboard-sidebar
 src/components/layout/   AppShell, Header, Breadcrumb, busca global
 src/components/          dashboard/, customers/ — componentes por domínio
@@ -53,10 +60,35 @@ src/mocks/               dados mockados centralizados
 src/types/               tipos de domínio
 ```
 
+## Multi-tenant
+
+Uma instalação atende várias empresas. Cada empresa é uma `Organization` e tem
+uma ou mais `Store`.
+
+O `organizationId` **nunca** vem do navegador: sai da sessão, em
+`src/lib/auth/session.ts`. As rotas seguem simples (`/clientes`, não
+`/empresa-x/clientes`) justamente para que o tenant não trafegue pela URL.
+
+O isolamento não depende de cada query lembrar do filtro. `getTenantDb()`
+devolve um Prisma estendido que injeta `organizationId` em toda operação — e
+**sobrescreve** o valor caso alguém tenha informado um, que é o que neutraliza
+um id forjado. A lista de modelos cobertos é derivada do schema em tempo de
+execução: todo modelo com o campo `organizationId` entra sozinho, sem lista
+manual para envelhecer.
+
+Duas fronteiras que o guard não alcança, por limitação do mecanismo: SQL cru
+(`$queryRaw`) e os filhos de escritas aninhadas — nesses, o `organizationId` é
+obrigatório no schema e o TypeScript cobra.
+
+`npm run verify:tenant` exercita essas regras, incluindo tentativas de forjar
+`organizationId`. Roda sem banco.
+
 ## Estado atual
 
 Concluído: fundação, arquitetura, layout (sidebar colapsável, header, breadcrumb,
-busca global com `⌘K`), Dashboard e Clientes — ambos visuais, com dados mockados.
+busca global com `⌘K`), Dashboard e Clientes — ambos visuais, com dados mockados —
+e o núcleo multi-tenant (schema, guard de isolamento, sessão, papéis).
 
-Próximas etapas: persistência de clientes, módulo de Produtos com variantes,
-PDV Lite, construtor de segmentos e integração com a WhatsApp Cloud API.
+Próximas etapas: autenticação real substituindo a sessão de desenvolvimento,
+persistência de clientes sobre os repositories, troca de loja no seletor,
+Produtos com variantes, PDV Lite, construtor de segmentos e WhatsApp Cloud API.

@@ -7,15 +7,21 @@ import { PeriodPicker } from "@/components/layout/period-picker";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_CURRENT_USER } from "@/mocks/workspace";
+import type { CurrentUser } from "@/types/navigation";
 
 type HeaderProps = {
   workspaceLabel: string;
+  user: CurrentUser;
   onOpenMobileNav: () => void;
   onOpenSearch: () => void;
 };
 
-export function Header({ workspaceLabel, onOpenMobileNav, onOpenSearch }: HeaderProps) {
+export function Header({
+  workspaceLabel,
+  user,
+  onOpenMobileNav,
+  onOpenSearch,
+}: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-background/55 px-4 backdrop-blur-xl backdrop-saturate-150 lg:px-6">
       <Button
@@ -66,12 +72,12 @@ export function Header({ workspaceLabel, onOpenMobileNav, onOpenSearch }: Header
 
         <div className="flex items-center gap-2.5">
           <Avatar className="size-8">
-            <AvatarFallback>{MOCK_CURRENT_USER.iniciais}</AvatarFallback>
+            <AvatarFallback>{user.iniciais}</AvatarFallback>
           </Avatar>
           <div className="hidden leading-tight sm:block">
-            <div className="text-sm font-medium">{MOCK_CURRENT_USER.nome}</div>
+            <div className="text-sm font-medium">{user.nome}</div>
             <div className="text-[11px] text-muted-foreground">
-              {MOCK_CURRENT_USER.funcao}
+              {user.funcao}
             </div>
           </div>
         </div>
